@@ -5,8 +5,8 @@ const CurrencyContext = createContext();
 
 export const useCurrency = () => useContext(CurrencyContext);
 
-const CURRENCY_KEY = 'money-vault-currency';
-const VND_MODE_KEY = 'money-vault-vnd-mode';
+const CURRENCY_KEY = 'basalt-currency';
+const VND_MODE_KEY = 'basalt-vnd-mode';
 
 export const CurrencyProvider = ({ children }) => {
   const [currency, setCurrencyState] = useState(() => {

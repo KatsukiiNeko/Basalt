@@ -8,7 +8,7 @@
 
 `verifyPassword(key, token)` decrypts the account's verification token with a
 candidate session key and checks the result against a hardcoded sentinel,
-`VERIFICATION_PLAINTEXT = 'MONEYVAULT_VERIFY_v1'`, using JavaScript `===`.
+`VERIFICATION_PLAINTEXT = 'BASALT_VERIFY_v1'`, using JavaScript `===`.
 
 String comparison in JS short-circuits on the first differing byte, so its
 duration varies with the number of matching leading characters. The V1 audit

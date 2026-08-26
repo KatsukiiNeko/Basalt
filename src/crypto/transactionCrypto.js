@@ -1,7 +1,7 @@
 // Verification tokens and per-transaction encrypt/decrypt helpers.
 import { encryptData, decryptData, generateIV, constantTimeEquals } from './primitives';
 
-export const VERIFICATION_PLAINTEXT = 'MONEYVAULT_VERIFY_v1';
+export const VERIFICATION_PLAINTEXT = 'BASALT_VERIFY_v1';
 
 export async function createVerificationToken(key) {
   const iv = generateIV();

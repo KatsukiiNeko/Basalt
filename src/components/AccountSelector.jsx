@@ -5,7 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from './LanguageToggle';
 import ThemeToggle from './ThemeToggle';
 
-const LAST_ACCOUNT_KEY = 'money-vault-last-account';
+const LAST_ACCOUNT_KEY = 'basalt-last-account';
 
 const AccountSelector = ({ onAccountSelected }) => {
   const [accounts, setAccounts] = useState([]);

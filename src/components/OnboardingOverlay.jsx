@@ -3,7 +3,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { formatMoney } from '../utils/currency';
 
-const ONBOARDING_KEY = 'money-vault-onboarded';
+const ONBOARDING_KEY = 'basalt-onboarded';
 
 // Wizard: 0 welcome -> 1 language -> 2 currency -> 3 VND display mode.
 // Step 3 only appears when VND is chosen — the display-unit distinction

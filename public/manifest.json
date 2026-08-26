@@ -1,6 +1,6 @@
 {
-  "name": "Money Vault",
-  "short_name": "MoneyVault",
+  "name": "Basalt",
+  "short_name": "Basalt",
   "description": "Secure offline personal finance tracker",
   "start_url": "/",
   "scope": "/",

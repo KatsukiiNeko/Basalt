@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo } 
 
 const ThemeContext = createContext();
 
-const THEME_KEY = 'money-vault-theme';
+const THEME_KEY = 'basalt-theme';
 
 const getSystemTheme = () =>
   window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';

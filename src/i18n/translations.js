@@ -5,8 +5,8 @@ export const translations = {
   },
 
   'lock.title': {
-    en: 'Money Vault',
-    vi: 'Money Vault'
+    en: 'Basalt',
+    vi: 'Basalt'
   },
   'lock.subtitle': {
     en: 'Secure Personal Finance Tracker',
@@ -70,8 +70,8 @@ export const translations = {
   },
 
   'dashboard.title': {
-    en: 'Money Vault',
-    vi: 'Money Vault'
+    en: 'Basalt',
+    vi: 'Basalt'
   },
   'dashboard.lock': {
     en: 'Lock',
@@ -557,8 +557,8 @@ export const translations = {
   },
 
   'accounts.title': {
-    en: 'Money Vault',
-    vi: 'Money Vault'
+    en: 'Basalt',
+    vi: 'Basalt'
   },
   'accounts.selectPrompt': {
     en: 'Select an account',
@@ -665,8 +665,8 @@ export const translations = {
   },
 
   'onboarding.welcome': {
-    en: 'Welcome to Money Vault',
-    vi: 'Chào mừng đến với Money Vault'
+    en: 'Welcome to Basalt',
+    vi: 'Chào mừng đến với Basalt'
   },
   'onboarding.getStarted': {
     en: 'Let\'s get you set up',

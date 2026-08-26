@@ -5,7 +5,7 @@ const LanguageContext = createContext();
 
 export const useLanguage = () => useContext(LanguageContext);
 
-const LANG_STORAGE_KEY = 'money-vault-lang';
+const LANG_STORAGE_KEY = 'basalt-lang';
 
 export const LanguageProvider = ({ children }) => {
   const [language, setLanguageState] = useState(() => {

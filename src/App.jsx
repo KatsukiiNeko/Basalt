@@ -7,7 +7,7 @@ import { useLanguage } from './context/LanguageContext';
 import { db } from './db/db';
 
 const SESSION_TIMEOUT = 15 * 60 * 1000;
-const LAST_ACCOUNT_KEY = 'money-vault-last-account';
+const LAST_ACCOUNT_KEY = 'basalt-last-account';
 
 function App() {
   const [accountId, setAccountId] = useState(null);

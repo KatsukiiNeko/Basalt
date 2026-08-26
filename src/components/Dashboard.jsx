@@ -30,7 +30,7 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
   const [editValue, setEditValue] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => {
-    try { return localStorage.getItem('money-vault-onboarded') !== '1'; } catch { return false; }
+    try { return localStorage.getItem('basalt-onboarded') !== '1'; } catch { return false; }
   });
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
@@ -131,7 +131,7 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `money-vault-${suffix}-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `basalt-${suffix}-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

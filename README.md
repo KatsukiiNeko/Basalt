@@ -1,4 +1,6 @@
-# 🔐 Money Vault
+# Basalt
+
+A secure, offline-first personal finance vault built with React, Vite, and the Web Crypto API. Zero-knowledge encryption, zero external network calls, zero tracking.
 
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white&style=for-the-badge)
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white&style=for-the-badge)
@@ -12,29 +14,52 @@
 
 ---
 
-## 🚀 Overview
+## Table of Contents
 
-A **secure, offline-first personal finance vault** built as a **Progressive Web App** with **zero-knowledge encryption**, **zero external network calls**, and **zero tracking**.
-
-All financial data is encrypted client-side with AES-GCM-256. Keys are derived from your password using PBKDF2 with 600,000 iterations and SHA-384. Nothing ever leaves your device.
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Security Architecture](#security-architecture)
+  - [Encryption Stack](#encryption-stack)
+  - [Brute-Force Protection](#brute-force-protection)
+  - [Backup Security](#backup-security)
+  - [Currency & Display Semantics](#currency--display-semantics)
+  - [Deployment Hardening](#deployment-hardening)
+- [Privacy](#privacy)
+- [Adaptive Forecasting Engine](#adaptive-forecasting-engine)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## ✨ Key Features
+## Overview
 
-- 🔒 **End-to-end encryption** — AES-GCM-256, unique IV per transaction, authenticated encryption
-- 🗂️ **Multi-account support** — separate encrypted vaults per account
-- 💾 **Portable encrypted backups** — cross-device backup/restore with password-based encryption
-- 📊 **Adaptive forecasting** — EWMA (α=0.3) + IQR outlier filtering + fixed-bill detection + user-correctable predictions
-- 📱 **Installable PWA** — works offline like a native app
-- 🌙 **Dark/Light theme** — system-aware with manual toggle
-- 🛡️ **Zero network footprint** — `connect-src 'none'` CSP, no analytics, no telemetry
-- 💱 **Explicit VND display modes** — first-run choice between full-VND and thousand-VND display; stored values are unit-neutral either way
-- 🧪 **80 automated tests** — crypto round-trips, forecasting, lockout escalation, backup restore (Vitest + fake-indexeddb)
+Basalt is a **Progressive Web App** that stores and encrypts all financial data locally on the user's device. It uses **AES-GCM-256** with keys derived from a user password via **PBKDF2 (600,000 iterations, SHA-384)**. No data ever leaves the browser — the app functions fully offline with a strict CSP that forbids any network connections.
+
+The application supports multiple accounts, each with its own encrypted vault, and offers portable encrypted backups for cross-device migration. A built-in adaptive forecasting engine provides spending predictions using lightweight statistical methods.
 
 ---
 
-## 🛡️ Security Architecture (v5.0)
+## Key Features
+
+- **End-to-end encryption** — AES-GCM-256, unique IV per transaction, authenticated encryption
+- **Multi-account support** — separate encrypted vaults per account
+- **Portable encrypted backups** — cross-device backup/restore with password-based encryption
+- **Adaptive forecasting** — EWMA (α=0.3) + IQR outlier filtering + fixed-bill detection + user-correctable predictions
+- **Installable PWA** — works offline like a native app
+- **Dark/Light theme** — system-aware with manual toggle
+- **Zero network footprint** — `connect-src 'none'` CSP, no analytics, no telemetry
+- **Explicit VND display modes** — first-run choice between full-VND and thousand-VND display; stored values are unit-neutral either way
+- **80 automated tests** — crypto round-trips, forecasting, lockout escalation, backup restore (Vitest + fake-indexeddb)
+
+---
+
+## Security Architecture
+
+Basalt is engineered with a **zero-knowledge** model: the server (there isn't one) never sees your data, and even the browser cannot decrypt without your password.
 
 ### Encryption Stack
 
@@ -43,7 +68,7 @@ All financial data is encrypted client-side with AES-GCM-256. Keys are derived f
 | **Key Derivation** | PBKDF2-SHA384 | 600,000 iterations (OWASP 2023+) |
 | **Symmetric Cipher** | AES-GCM-256 | Authenticated encryption, unique 12-byte IV per operation |
 | **Salt** | 16 bytes CSPRNG | Per-account, stored in IndexedDB |
-| **Verification** | Encrypted known-plaintext | `MONEYVAULT_VERIFY_v1` token |
+| **Verification** | Encrypted known-plaintext | `BASALT_VERIFY_v1` token |
 | **Session Keys** | In-memory only | Never persisted, cleared on lock/timeout |
 
 ### Brute-Force Protection
@@ -56,7 +81,16 @@ All financial data is encrypted client-side with AES-GCM-256. Keys are derived f
 | **Password change cooldown** | 30s after 3 failed attempts |
 | **Session timeout** | 15-minute inactivity auto-lock |
 
-### Backup Restore Protection (v5.0)
+### Backup Security
+
+| Format | Encryption | Portable | Use Case |
+|--------|-----------|----------|----------|
+| **v2 Quick** | Session key (AES-GCM) | No | Same device, same password |
+| **v3 Secure** | Password-derived key (PBKDF2 600K + AES-GCM) | Yes | Cross-device transfer |
+
+Secure backups encrypt raw transaction data with a fresh salt and a user-supplied password. Backup files never contain the account password. Rows that fail decryption during export are skipped and reported in the backup metadata.
+
+**Backup Restore Protection** adds another layer:
 
 | Mechanism | Implementation |
 |-----------|---------------|
@@ -76,20 +110,9 @@ All financial data is encrypted client-side with AES-GCM-256. Keys are derived f
 | 16 | 10min | 20x | 12M |
 | 20+ | 30min | 50x | 30M |
 
-### Backup Security
-
-| Format | Encryption | Portable | Use Case |
-|--------|-----------|----------|----------|
-| **v2 Quick** | Session key (AES-GCM) | No | Same device, same password |
-| **v3 Secure** | Password-derived key (PBKDF2 600K + AES-GCM) | Yes | Cross-device transfer |
-
-Secure backups encrypt raw transaction data with a fresh salt and user-supplied password. Backup files never contain your account password.
-
-Rows that cannot be decrypted during backup creation (corruption) are skipped and reported in the backup's `skippedCount` metadata instead of silently vanishing or aborting the whole export.
-
 ### Currency & Display Semantics
 
-Stored amounts are **unit-neutral integers** — the database never records a display unit. A value saved as `1250000` stays `1250000` in every read/write path; scaling happens only inside `formatMoney()` at render time:
+Stored amounts are **unit-neutral integers** — the database never records a display unit. Scaling occurs only at render time via `formatMoney()`.
 
 | Mode | Stored `50` renders as | Behavior |
 |------|------------------------|----------|
@@ -97,7 +120,7 @@ Stored amounts are **unit-neutral integers** — the database never records a di
 | VND + Thousand (legacy default) | `50,000 VND` | ×1000 at render only |
 | USD | `50.00 USD` | Verbatim, 2 decimals |
 
-The choice is made explicitly at first-run onboarding (with a live example) and changeable later in Settings. Switching modes never rewrites any stored row — see `docs/decisions/DR-0003-stored-values-unit-neutral.md`.
+The choice is made at first-run onboarding and can be changed later without rewriting any stored data.
 
 ### Deployment Hardening
 
@@ -110,8 +133,7 @@ The choice is made explicitly at first-run onboarding (with a live example) and 
 | Referrer-Policy | strict-origin-when-cross-origin |
 | Permissions-Policy | camera=(), microphone=(), geolocation=() |
 
-### Build Security
-
+**Build Security**:
 - Source maps disabled in production
 - Console/debugger statements stripped via Terser
 - Content-hashed filenames for cache busting
@@ -119,9 +141,9 @@ The choice is made explicitly at first-run onboarding (with a live example) and 
 
 ---
 
-## 🔒 Privacy
+## Privacy
 
-Money Vault is built on a **zero-knowledge, zero-network** architecture:
+Basalt is built on a **zero-knowledge, zero-network** architecture:
 
 | Privacy Guarantee | How |
 |---|---|
@@ -140,7 +162,7 @@ Your financial data exists **only on your device**. If you lose access, there is
 
 ---
 
-## 📈 Adaptive Forecasting Engine
+## Adaptive Forecasting Engine
 
 Three lightweight statistical tools work together in **O(n) time**:
 
@@ -158,7 +180,7 @@ No ML. No external libraries. Just math that runs in microseconds.
 
 ---
 
-## ⚙️ Tech Stack
+## Tech Stack
 
 | Category | Technology | Version |
 |----------|-----------|---------|
@@ -175,7 +197,7 @@ No ML. No external libraries. Just math that runs in microseconds.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
@@ -236,12 +258,12 @@ All components import crypto through the `crypto.js` facade; only the facade's n
 
 ---
 
-## ⚡ Getting Started
+## Getting Started
 
 ```bash
 # Clone
-git clone https://github.com/your-username/money-vault.git
-cd money-vault
+git clone https://github.com/KatsukiiNeko/Basalt.git
+cd Basalt
 
 # Install
 npm install
@@ -256,7 +278,9 @@ npm run build
 npm run preview
 ```
 
-## 🧪 Testing
+---
+
+## Testing
 
 The suite runs on Vitest with jsdom; `tests/setup.js` loads `fake-indexeddb/auto`, so Dexie code (including backup/restore flows) is tested against a real IndexedDB implementation rather than mocks.
 
@@ -269,8 +293,9 @@ Coverage priorities per the V2 brief: crypto round-trips and wrong-password reje
 
 Architecture decisions behind non-trivial changes live in `docs/decisions/` — start there before changing crypto (`DR-0002` constant-time verification), currency semantics (`DR-0003` unit-neutral storage), or the schema.
 
+---
 
-## 🤝 Contributing
+## Contributing
 
 Pull requests, issues, and feature suggestions are welcome.
 
@@ -283,22 +308,10 @@ git push origin feature/amazing-feature
 
 ---
 
-## 📜 License
+## License
 
 MIT License. See `LICENSE` for details.
 
 ---
 
-## 📄 Copyright
-
 © 2026 Katsukii Neko. All rights reserved.
-
----
-
-<div align="center">
-
-### 🔒 Privacy First • 📴 Offline First • 🔐 User First
-
-*Your money. Your device. Your control.*
-> *Design. Code. Experience.*
-</div>

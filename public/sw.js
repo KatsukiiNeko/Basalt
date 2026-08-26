@@ -1,5 +1,7 @@
-// Service worker for Money Vault PWA
-const CACHE_NAME = 'money-vault-cache-v4';
+// Service worker for the Basalt PWA. CACHE_NAME is versioned so the
+// activate handler deletes stale caches on deploy; bump vN to force
+// every client to re-fetch the precache manifest.
+const CACHE_NAME = 'basalt-cache-v5';
 const FILES_TO_CACHE = [
   '/',
   '/index.html',

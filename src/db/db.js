@@ -1,6 +1,6 @@
 import Dexie from 'dexie';
 
-export const db = new Dexie('MoneyVault');
+export const db = new Dexie('Basalt');
 
 db.version(1).stores({
   transactions: '++id,date,type,category',
