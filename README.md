@@ -1,0 +1,304 @@
+# 🔐 Money Vault
+
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white&style=for-the-badge)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white&style=for-the-badge)
+![PWA](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?logo=pwa&logoColor=white&style=for-the-badge)
+![Encryption](https://img.shields.io/badge/AES--GCM--256-Encrypted-00A86B?logo=letsencrypt&logoColor=white&style=for-the-badge)
+![PBKDF2](https://img.shields.io/badge/PBKDF2-600K%20Iterations-FF6B4A?style=for-the-badge)
+![IndexedDB](https://img.shields.io/badge/Storage-IndexedDB%20%2B%20Dexie-FF6B4A?style=for-the-badge)
+![EWMA](https://img.shields.io/badge/Forecast-EWMA%20%2B%20IQR-4169E1?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)
+
+---
+
+## 🚀 Overview
+
+A **secure, offline-first personal finance vault** built as a **Progressive Web App** with **zero-knowledge encryption**, **zero external network calls**, and **zero tracking**.
+
+All financial data is encrypted client-side with AES-GCM-256. Keys are derived from your password using PBKDF2 with 600,000 iterations and SHA-384. Nothing ever leaves your device.
+
+---
+
+## ✨ Key Features
+
+- 🔒 **End-to-end encryption** — AES-GCM-256, unique IV per transaction, authenticated encryption
+- 🗂️ **Multi-account support** — separate encrypted vaults per account
+- 💾 **Portable encrypted backups** — cross-device backup/restore with password-based encryption
+- 📊 **Adaptive forecasting** — EWMA (α=0.3) + IQR outlier filtering + fixed-bill detection + user-correctable predictions
+- 📱 **Installable PWA** — works offline like a native app
+- 🌙 **Dark/Light theme** — system-aware with manual toggle
+- 🛡️ **Zero network footprint** — `connect-src 'none'` CSP, no analytics, no telemetry
+- 💱 **Explicit VND display modes** — first-run choice between full-VND and thousand-VND display; stored values are unit-neutral either way
+- 🧪 **80 automated tests** — crypto round-trips, forecasting, lockout escalation, backup restore (Vitest + fake-indexeddb)
+
+---
+
+## 🛡️ Security Architecture (v5.0)
+
+### Encryption Stack
+
+| Layer | Implementation | Details |
+|-------|---------------|---------|
+| **Key Derivation** | PBKDF2-SHA384 | 600,000 iterations (OWASP 2023+) |
+| **Symmetric Cipher** | AES-GCM-256 | Authenticated encryption, unique 12-byte IV per operation |
+| **Salt** | 16 bytes CSPRNG | Per-account, stored in IndexedDB |
+| **Verification** | Encrypted known-plaintext | `MONEYVAULT_VERIFY_v1` token |
+| **Session Keys** | In-memory only | Never persisted, cleared on lock/timeout |
+
+### Brute-Force Protection
+
+| Mechanism | Implementation |
+|-----------|---------------|
+| **Exponential lockout** | 5 attempts = 30s, 10 = 2min, 15 = 5min, 20+ = 10min |
+| **Dual persistence** | Lockout state in both localStorage and IndexedDB |
+| **Cumulative tracking** | Attempts survive page refresh and IndexedDB wipe |
+| **Password change cooldown** | 30s after 3 failed attempts |
+| **Session timeout** | 15-minute inactivity auto-lock |
+
+### Backup Restore Protection (v5.0)
+
+| Mechanism | Implementation |
+|-----------|---------------|
+| **Triple-store lockout** | IndexedDB + localStorage + sessionStorage cross-validated |
+| **Backup-file fingerprinting** | SHA-256 fingerprint binds lockout to specific backup file |
+| **Escalating PBKDF2 cost** | Iterations increase per failure tier (2x → 50x) |
+| **Proof-of-work gate** | SHA-256 PoW challenge after 10+ failed attempts (5–60s forced computation) |
+| **Session hard cap** | 20 attempts per browser tab, stored in sessionStorage |
+| **Per-backup isolation** | Different backup files have independent lockout counters |
+
+| Failure Tier | Lockout | PBKDF2 Multiplier | Effective Iterations |
+|-------------|---------|-------------------|---------------------|
+| 0–4 | None | 1x | 600K |
+| 5 | 30s | 2x | 1.2M |
+| 8 | 2min | 5x | 3M |
+| 12 | 5min | 10x | 6M |
+| 16 | 10min | 20x | 12M |
+| 20+ | 30min | 50x | 30M |
+
+### Backup Security
+
+| Format | Encryption | Portable | Use Case |
+|--------|-----------|----------|----------|
+| **v2 Quick** | Session key (AES-GCM) | No | Same device, same password |
+| **v3 Secure** | Password-derived key (PBKDF2 600K + AES-GCM) | Yes | Cross-device transfer |
+
+Secure backups encrypt raw transaction data with a fresh salt and user-supplied password. Backup files never contain your account password.
+
+Rows that cannot be decrypted during backup creation (corruption) are skipped and reported in the backup's `skippedCount` metadata instead of silently vanishing or aborting the whole export.
+
+### Currency & Display Semantics
+
+Stored amounts are **unit-neutral integers** — the database never records a display unit. A value saved as `1250000` stays `1250000` in every read/write path; scaling happens only inside `formatMoney()` at render time:
+
+| Mode | Stored `50` renders as | Behavior |
+|------|------------------------|----------|
+| VND + Full | `50 VND` | Verbatim |
+| VND + Thousand (legacy default) | `50,000 VND` | ×1000 at render only |
+| USD | `50.00 USD` | Verbatim, 2 decimals |
+
+The choice is made explicitly at first-run onboarding (with a live example) and changeable later in Settings. Switching modes never rewrites any stored row — see `docs/decisions/DR-0003-stored-values-unit-neutral.md`.
+
+### Deployment Hardening
+
+| Header | Value |
+|--------|-------|
+| Content-Security-Policy | `default-src 'self'; script-src 'self'; connect-src 'none'; frame-ancestors 'none'` |
+| X-Frame-Options | DENY |
+| X-Content-Type-Options | nosniff |
+| Strict-Transport-Security | max-age=31536000; includeSubDomains |
+| Referrer-Policy | strict-origin-when-cross-origin |
+| Permissions-Policy | camera=(), microphone=(), geolocation=() |
+
+### Build Security
+
+- Source maps disabled in production
+- Console/debugger statements stripped via Terser
+- Content-hashed filenames for cache busting
+- No external dependencies beyond React and Dexie
+
+---
+
+## 🔒 Privacy
+
+Money Vault is built on a **zero-knowledge, zero-network** architecture:
+
+| Privacy Guarantee | How |
+|---|---|
+| **No network calls** | CSP `connect-src 'none'` — the browser physically cannot make outbound requests |
+| **No analytics** | No Google Analytics, no Mixpanel, no Sentry, no tracking pixels |
+| **No telemetry** | No phone-home, no crash reports, no usage data collection |
+| **No cookies** | Zero cookies used — all state is in IndexedDB and localStorage |
+| **No external scripts** | No CDNs, no Google Fonts loaded at runtime — fully self-contained |
+| **No server** | All data processing happens on your device — there is no backend |
+| **No account creation** | No email, no phone number, no sign-up — just set a password and go |
+| **No data export** | Your data never leaves your browser unless you explicitly export a backup |
+| **Encrypted at rest** | Every transaction is AES-256-GCM encrypted in IndexedDB |
+| **Session auto-lock** | Keys are wiped from memory after 15 minutes of inactivity |
+
+Your financial data exists **only on your device**. If you lose access, there is no recovery server — your backup file is the only way to restore.
+
+---
+
+## 📈 Adaptive Forecasting Engine
+
+Three lightweight statistical tools work together in **O(n) time**:
+
+| Layer | Technique | Purpose |
+|-------|-----------|---------|
+| **Outlier Removal** | IQR (1.5x interquartile range) | Filters extreme one-off expenses before averaging (≥8 data points) |
+| **Spending Rate (current month)** | EWMA (α=0.3) | Recency-biased exponential moving average on daily totals |
+| **Spending Rate (past months)** | Simple mean | Average of daily spending for completed months |
+| **Fixed Bills** | Historical median | Projects unpaid recurring obligations |
+| **User Correction** | Ratio calibration | Click to correct predictions; stored ratio calibrates future forecasts |
+
+**Data readiness**: Current month uses EWMA (α=0.3) and requires logged days ≥ best prior month's logged days. Past months use simple average of actual spending and require ≥1 day with variable expenses. No predictions shown when data is insufficient.
+
+No ML. No external libraries. Just math that runs in microseconds.
+
+---
+
+## ⚙️ Tech Stack
+
+| Category | Technology | Version |
+|----------|-----------|---------|
+| Framework | React | 19.2.6 |
+| Build Tool | Vite (rolldown) | 8.0.13 |
+| Database | Dexie.js (IndexedDB) | 4.4.2 |
+| Encryption | Web Crypto API | Native |
+| Charts | Apache ECharts | tree-shaken imports only |
+| Testing | Vitest + fake-indexeddb | dev-only |
+| Styling | CSS3 + Custom Properties | Native |
+| PWA | Service Worker + Manifest | Native |
+| Forecasting | EWMA + IQR | Custom |
+| Dependencies | 4 runtime (react, react-dom, dexie, echarts) | Minimal |
+
+---
+
+## 📁 Project Structure
+
+```
+src/
+├── components/
+│   ├── AccountSelector.jsx    # Multi-account creation/selection/deletion
+│   ├── BackupRestore.jsx      # Encrypted backup/restore with lockout integration
+│   ├── ChartsSection.jsx      # ECharts visualizations (trend/category breakdown)
+│   ├── ConfirmDialog.jsx      # Confirmation modal
+│   ├── CurrencyToggle.jsx     # Currency toggle
+│   ├── Dashboard.jsx          # Main dashboard with balance, form, history, forecast
+│   ├── ErrorBoundary.jsx      # Catches render errors instead of white-screening
+│   ├── Forecast.jsx           # Monthly forecast display
+│   ├── History.jsx            # Transaction history with delete
+│   ├── LanguageToggle.jsx     # Language toggle
+│   ├── LockScreen.jsx         # PIN entry with exponential lockout
+│   ├── MonthPicker.jsx        # Month/year navigation with data-aware highlighting
+│   ├── OnboardingOverlay.jsx  # First-run wizard: language → currency → VND mode
+│   ├── PasswordManager.jsx    # Change password with full re-encryption
+│   ├── SettingsPanel.jsx      # Grouped settings (profile/currency/security/about)
+│   ├── ThemeToggle.jsx        # Dark/light toggle
+│   └── TransactionForm.jsx    # Add transaction form
+├── context/
+│   ├── CurrencyContext.jsx    # Currency + VND display mode, exposes formatCurrency()
+│   ├── LanguageContext.jsx    # i18n with localStorage
+│   └── ThemeContext.jsx       # Theme state with localStorage
+├── crypto/
+│   ├── constants.js           # PBKDF2_ITERATIONS and other tuned parameters
+│   ├── primitives.js          # Raw WebCrypto ops: deriveKey, encrypt/decrypt, constant-time equals
+│   ├── sessionKeys.js         # In-memory per-account key registry (never persisted)
+│   ├── transactionCrypto.js   # Verification tokens + per-transaction encrypt/decrypt
+│   ├── backupService.js       # Backup create/parse/restore flows (DB-aware)
+│   └── crypto.js              # Public facade re-exporting the modules above
+├── db/
+│   └── db.js                  # Dexie schema v1–v4 with migrations
+├── i18n/
+│   └── translations.js        # EN/VI translation strings (single keyed table)
+├── utils/
+│   ├── chartData.js           # Aggregation for chart inputs
+│   ├── currency.js            # formatMoney() — single money-formatting authority
+│   ├── forecast.js            # EWMA + IQR forecasting engine with user correction
+│   └── lockout.js             # Triple-store anti-brute-force system
+├── App.jsx                    # Root component with session timeout
+├── index.css                  # Full application stylesheet
+└── main.jsx                   # Entry point, SW registration, context providers
+
+tests/                         # Vitest suites (not bundled)
+├── setup.js                   # fake-indexeddb/auto bootstrap
+├── smoke.test.js              # App mounts without crashing
+├── crypto.test.js             # Derive/encrypt/decrypt round-trips, verification token
+├── forecast.test.js           # EWMA, IQR filtering, insufficient-data paths
+├── lockout.test.js            # Escalation tiers, persistence, reset behavior
+└── secureBackup.test.js       # Real-Dexie integration: backup create→parse→restore, corruption reporting
+
+docs/decisions/                # Decision Records (DR-0001…DR-0004)
+```
+
+All components import crypto through the `crypto.js` facade; only the facade's named exports are public. Services (`backupService`) own all DB access for their domain — components never talk to Dexie directly for these flows.
+
+---
+
+## ⚡ Getting Started
+
+```bash
+# Clone
+git clone https://github.com/your-username/money-vault.git
+cd money-vault
+
+# Install
+npm install
+
+# Develop
+npm run dev
+
+# Build
+npm run build
+
+# Preview
+npm run preview
+```
+
+## 🧪 Testing
+
+The suite runs on Vitest with jsdom; `tests/setup.js` loads `fake-indexeddb/auto`, so Dexie code (including backup/restore flows) is tested against a real IndexedDB implementation rather than mocks.
+
+```bash
+npm test        # watch mode
+npm run test:run # single run (CI)
+```
+
+Coverage priorities per the V2 brief: crypto round-trips and wrong-password rejection, forecast edge cases (EWMA, IQR outliers, insufficient data), lockout escalation and persistence, database schema/migrations/account isolation, and the full secure-backup lifecycle. Integration tests use low PBKDF2 iteration counts for speed; production constants are pinned by assertion so an accidental change fails the suite.
+
+Architecture decisions behind non-trivial changes live in `docs/decisions/` — start there before changing crypto (`DR-0002` constant-time verification), currency semantics (`DR-0003` unit-neutral storage), or the schema.
+
+
+## 🤝 Contributing
+
+Pull requests, issues, and feature suggestions are welcome.
+
+```bash
+git checkout -b feature/amazing-feature
+git commit -m 'Add amazing feature'
+git push origin feature/amazing-feature
+# Open a Pull Request
+```
+
+---
+
+## 📜 License
+
+MIT License. See `LICENSE` for details.
+
+---
+
+## 📄 Copyright
+
+© 2026 Katsukii Neko. All rights reserved.
+
+---
+
+<div align="center">
+
+### 🔒 Privacy First • 📴 Offline First • 🔐 User First
+
+*Your money. Your device. Your control.*
+> *Design. Code. Experience.*
+</div>

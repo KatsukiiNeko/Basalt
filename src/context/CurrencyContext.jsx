@@ -1,0 +1,61 @@
+import { createContext, useContext, useState } from 'react';
+import { formatMoney } from '../utils/currency';
+
+const CurrencyContext = createContext();
+
+export const useCurrency = () => useContext(CurrencyContext);
+
+const CURRENCY_KEY = 'money-vault-currency';
+const VND_MODE_KEY = 'money-vault-vnd-mode';
+
+export const CurrencyProvider = ({ children }) => {
+  const [currency, setCurrencyState] = useState(() => {
+    try {
+      return localStorage.getItem(CURRENCY_KEY) || 'USD';
+    } catch {
+      return 'USD';
+    }
+  });
+
+  const [vndDisplayMode, setVndDisplayModeState] = useState(() => {
+    try {
+      return localStorage.getItem(VND_MODE_KEY) || 'scaled';
+    } catch {
+      return 'scaled';
+    }
+  });
+
+  const persist = (key, value) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // Storage can be unavailable (private mode) — the choice still applies
+      // for this session.
+    }
+  };
+
+  const setCurrency = (next) => {
+    setCurrencyState(next);
+    persist(CURRENCY_KEY, next);
+  };
+
+  const toggleCurrency = () => {
+    setCurrency(currency === 'USD' ? 'VND' : 'USD');
+  };
+
+  const setVndDisplayMode = (mode) => {
+    setVndDisplayModeState(mode);
+    persist(VND_MODE_KEY, mode);
+  };
+
+  const formatCurrency = (amount) =>
+    formatMoney(amount, currency, vndDisplayMode);
+
+  return (
+    <CurrencyContext.Provider
+      value={{ currency, setCurrency, toggleCurrency, vndDisplayMode, setVndDisplayMode, formatCurrency }}
+    >
+      {children}
+    </CurrencyContext.Provider>
+  );
+};

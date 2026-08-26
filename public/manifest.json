@@ -1,0 +1,18 @@
+{
+  "name": "Money Vault",
+  "short_name": "MoneyVault",
+  "description": "Secure offline personal finance tracker",
+  "start_url": "/",
+  "scope": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#3367D6",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
