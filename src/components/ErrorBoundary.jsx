@@ -16,7 +16,9 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // Diagnostics only — the thrown value stays out of user-facing copy.
+    // Diagnostics for `npm run dev`/inspection — the production build strips
+    // console via terser drop_console, where the boundary UI itself is the
+    // only user-facing signal. The thrown value never enters that copy.
     console.error('[Basalt] render crash:', error, info?.componentStack);
   }
 

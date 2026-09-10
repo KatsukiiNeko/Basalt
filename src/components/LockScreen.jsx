@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { db } from '../db/db';
 import { setSessionKey, PBKDF2_ITERATIONS } from '../crypto/crypto';
-import { unlockAttempt, setupPassword, upgradePbkdf2 } from '../services/auth';
+import { fetchAccountAuthState, unlockAttempt, setupPassword, upgradePbkdf2, deleteAccount } from '../services/auth';
 import {
   checkPwdLockout,
   getPwdLockoutState,
@@ -45,8 +45,8 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
       }
 
       try {
-        const passwordSet = await db.settings.get('passwordSet:' + accountId);
-        if (!passwordSet) setIsFirstTime(true);
+        const { isFirstTime } = await fetchAccountAuthState(accountId);
+        if (isFirstTime) setIsFirstTime(true);
       } catch {
         // If auth settings are unreadable the unlock path below surfaces
         // the corruption explicitly; nothing to do here.
@@ -139,9 +139,9 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
     }
 
     try {
-      const passwordSet = await db.settings.get('passwordSet:' + accountId);
+      const { isFirstTime } = await fetchAccountAuthState(accountId);
 
-      if (passwordSet) {
+      if (!isFirstTime) {
         // Verification always derives at the vault's stored iteration count —
         // escalation here would break legitimate unlocks (the stored token
         // can only be decrypted by the exact key). Attackers pay through
@@ -216,11 +216,7 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
 
   const performReset = async () => {
     try {
-      await db.transactions.where('accountId').equals(accountId).delete();
-      await db.settings.delete('salt:' + accountId);
-      await db.settings.delete('verificationToken:' + accountId);
-      await db.settings.delete('passwordSet:' + accountId);
-      await db.settings.delete('lockoutData:' + accountId);
+      await deleteAccount(accountId);
       await recordPwdSuccessfulAttempt(accountId); // also clears legacy stores
       setTokenMissing(false);
       setError('');

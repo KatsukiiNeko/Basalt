@@ -113,6 +113,23 @@ export async function changePassword(accountId, currentPassword, newPassword, { 
   return true;
 }
 
+// Destructive last-resort reset for a corrupted vault (token missing):
+// wipes the account's transactions and auth state. The user re-enters
+// setup afterwards with a fresh password.
+export async function deleteAccount(accountId) {
+  await db.transaction('rw', db.transactions, db.settings, db.accounts, async () => {
+    await db.transactions.where('accountId').equals(accountId).delete();
+    await db.settings.bulkDelete([
+      'salt:' + accountId,
+      'verificationToken:' + accountId,
+      'passwordSet:' + accountId,
+      'pbkdf2Version:' + accountId,
+      'lockoutData:' + accountId,
+      'pwdLockout:' + accountId,
+    ]);
+  });
+}
+
 // Upgrade a legacy-iteration vault to the current PBKDF2 standard after a
 // successful unlock. Runs with the freshly verified old key. Failure is
 // never silent: corruption must surface, not data.
