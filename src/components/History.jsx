@@ -1,9 +1,40 @@
 import { useState, useEffect } from 'react';
 import { db } from '../db/db';
-import { getSessionKey, decryptTransactionFromStorage, getActiveAccountId } from '../crypto/crypto';
+import { getSessionKey, decryptTransactionFromStorage, encryptTransactionForStorage, getActiveAccountId } from '../crypto/crypto';
+import { validateTransactionData } from '../crypto/transactionCrypto';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { categoryValueToKey } from '../i18n/translations';
+
+const CATEGORY_TYPE_MAP = {
+  'Salary': 'income',
+  'Investment': 'income',
+  'Other Income': 'income',
+  'Food & Dining': 'expense',
+  'Transportation': 'expense',
+  'Shopping': 'expense',
+  'Entertainment': 'expense',
+  'Bills & Utilities': 'expense',
+  'Healthcare': 'expense',
+  'Travel': 'expense',
+  'Education': 'expense',
+  'Gifts & Donations': 'expense',
+};
+
+const CATEGORIES = [
+  'Food & Dining',
+  'Transportation',
+  'Shopping',
+  'Entertainment',
+  'Bills & Utilities',
+  'Healthcare',
+  'Travel',
+  'Education',
+  'Gifts & Donations',
+  'Salary',
+  'Investment',
+  'Other Income',
+];
 
 const CATEGORY_ICON_MAP = {
   'Food & Dining': { icon: 'food', badge: 'food' },
@@ -47,6 +78,16 @@ const History = ({ selectedMonth, selectedYear }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
+  // Inline-edit state. "editingId" holds a persistent row-level enabling state
+  // (the purple glow); "editingField + editDraft" drive one active inline editor
+  // at a time. Source stays encrypted at rest — we only decrypt for display and
+  // re-encrypt on save.
+  const [editingId, setEditingId] = useState(null);
+  const [editingField, setEditingField] = useState(null);
+  const [editDraft, setEditDraft] = useState('');
+  // Field-level validation while an inline editor is open. Kept separate from
+  // the global `error` banner so a bad value in one field doesn't blank the list.
+  const [fieldError, setFieldError] = useState('');
   const { formatCurrency } = useCurrency();
   const { t, language } = useLanguage();
 
@@ -96,6 +137,89 @@ const History = ({ selectedMonth, selectedYear }) => {
     } catch {
       setError(t('history.errors.deleteFailed'));
     }
+  };
+
+  // Pencil toggles row-level edit mode. It "holds" until toggled again: closing
+  // the field editor does not exit edit mode, so the user can keep double
+  // clicking fields without re-arming the pencil.
+  const toggleEdit = (id) => {
+    setFieldError('');
+    setEditingId((prev) => {
+      const next = prev === id ? null : id;
+      if (next === null) {
+        setEditingField(null);
+        setEditDraft('');
+      }
+      return next;
+    });
+  };
+
+  const openFieldEditor = (tx, field) => {
+    setFieldError('');
+    if (editingId !== tx.id) return;
+    if (field === 'amount') {
+      setEditDraft(tx.amount);
+    } else {
+      setEditDraft(tx[field] || '');
+    }
+    setEditingField(field);
+  };
+
+  const commitFieldEdit = async (tx, field, valueOverride) => {
+    if (editingId !== tx.id) return;
+    const key = getSessionKey();
+    if (!key) {
+      setError(t('history.errors.sessionExpired'));
+      return;
+    }
+    // valueOverride lets callers (e.g. the category <select>) commit the picked
+    // value synchronously without depending on a queued setEditDraft.
+    const value = valueOverride !== undefined ? valueOverride : editDraft;
+
+    const next = { ...tx };
+    if (field === 'amount') {
+      if (value === '' || Number.isNaN(Number(value)) || Number(value) <= 0) {
+        setFieldError(t('form.errors.invalidAmount'));
+        return;
+      }
+      next.amount = Number(value);
+    } else if (field === 'note') {
+      next.note = value;
+    } else if (field === 'category') {
+      next.category = value;
+      next.type = CATEGORY_TYPE_MAP[value] || next.type;
+    } else if (field === 'date') {
+      if (!value) {
+        setFieldError(t('form.errors.selectDate'));
+        return;
+      }
+      next.date = value;
+    }
+
+    if (!validateTransactionData(next)) {
+      setFieldError(t('form.errors.invalidTransaction'));
+      return;
+    }
+
+    setEditingField(null);
+    setEditDraft('');
+    setFieldError('');
+
+    try {
+      next.accountId = getActiveAccountId();
+      const encrypted = await encryptTransactionForStorage(next, key);
+      encrypted.id = tx.id;
+      await db.transactions.update(tx.id, encrypted);
+      setAllTransactions((prev) => prev.map((p) => (p.id === tx.id ? next : p)));
+    } catch {
+      setError(t('history.errors.updateFailed'));
+    }
+  };
+
+  const cancelFieldEdit = () => {
+    setEditingField(null);
+    setEditDraft('');
+    setFieldError('');
   };
 
   const formatDate = (dateString) => {
@@ -153,29 +277,116 @@ const History = ({ selectedMonth, selectedYear }) => {
         </div>
       ) : (
         <div className="transactions-list">
-          {transactions.map((transaction) => (
-            <div key={transaction.id} className={`transaction-item ${deletingId === transaction.id ? 'deleting' : ''}`}>
+          {transactions.map((transaction) => {
+            const rowArmed = editingId === transaction.id;
+            const openEditor = (field) => openFieldEditor(transaction, field);
+            return (
+            <div key={transaction.id} className={`transaction-item ${deletingId === transaction.id ? 'deleting' : ''} ${rowArmed ? 'editing' : ''}`}>
               <CategoryIcon category={transaction.category} />
               <div className="transaction-left">
                 <div className="transaction-date">
                   {formatDate(transaction.date)}
                 </div>
                 <div className="transaction-info">
-                  <div className="transaction-category">
-                    {categoryValueToKey[transaction.category] ? t(categoryValueToKey[transaction.category]) : transaction.category}
+                  <div
+                    className="transaction-category editable"
+                    onDoubleClick={rowArmed ? () => openEditor('category') : undefined}
+                  >
+                    {rowArmed && editingField === 'category' ? (
+                      <>
+                        <select
+                          className="inline-edit-input"
+                          value={editDraft}
+                          autoFocus
+                          onChange={(e) => commitFieldEdit(transaction, 'category', e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Escape') cancelFieldEdit(); }}
+                        >
+                          {CATEGORIES.map((c) => (
+                            <option key={c} value={c}>
+                              {categoryValueToKey[c] ? t(categoryValueToKey[c]) : c}
+                            </option>
+                          ))}
+                        </select>
+                      </>
+                    ) : (
+                      <span className="editable-target">
+                        {categoryValueToKey[transaction.category] ? t(categoryValueToKey[transaction.category]) : transaction.category}
+                      </span>
+                    )}
+                    {rowArmed && editingField === 'category' && fieldError && (
+                      <span className="inline-edit-error">{fieldError}</span>
+                    )}
                   </div>
-                  {transaction.note && (
-                    <div className="transaction-note">
-                      {transaction.note}
+                  {(transaction.note || rowArmed) && (
+                    <div
+                      className="transaction-note editable"
+                      onDoubleClick={rowArmed ? () => openEditor('note') : undefined}
+                    >
+                      {rowArmed && editingField === 'note' ? (
+                        <span className="inline-editor-wrap">
+                          <input
+                            className="inline-edit-input"
+                            value={editDraft}
+                            autoFocus
+                            placeholder={t('history.addNoteHint')}
+                            onChange={(e) => setEditDraft(e.target.value)}
+                            onBlur={() => commitFieldEdit(transaction, 'note')}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') commitFieldEdit(transaction, 'note');
+                              else if (e.key === 'Escape') cancelFieldEdit();
+                            }}
+                          />
+                          {fieldError && <span className="inline-edit-error">{fieldError}</span>}
+                        </span>
+                      ) : (
+                        <span className="editable-target">
+                          {transaction.note || t('history.addNoteHint')}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
               <div className="transaction-right">
                 <div className={`transaction-amount ${transaction.type}`}>
-                  <span className="transaction-direction">{transaction.type === 'expense' ? '-' : '+'}</span>
-                  {formatCurrency(transaction.amount)}
+                  {rowArmed && editingField === 'amount' ? (
+                    <span className="inline-editor-wrap">
+                      <input
+                        className="inline-edit-input amount"
+                        type="text"
+                        inputMode="decimal"
+                        value={editDraft}
+                        autoFocus
+                        onChange={(e) => setEditDraft(e.target.value)}
+                        onBlur={() => commitFieldEdit(transaction, 'amount')}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') commitFieldEdit(transaction, 'amount');
+                          else if (e.key === 'Escape') cancelFieldEdit();
+                        }}
+                      />
+                      {fieldError && <span className="inline-edit-error">{fieldError}</span>}
+                    </span>
+                  ) : (
+                    <span
+                      className="editable-target"
+                      onDoubleClick={rowArmed ? () => openEditor('amount') : undefined}
+                    >
+                      <span className="transaction-direction">{transaction.type === 'expense' ? '-' : '+'}</span>
+                      {formatCurrency(transaction.amount)}
+                    </span>
+                  )}
                 </div>
+                <button
+                  className={`transaction-edit-btn${rowArmed ? ' active' : ''}`}
+                  onClick={() => toggleEdit(transaction.id)}
+                  title={rowArmed ? t('history.doneEditing') : t('history.edit')}
+                  aria-label={`${rowArmed ? t('history.doneEditing') : t('history.edit')} ${t(categoryValueToKey[transaction.category] || '') || transaction.category}`}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
                 {deletingId === transaction.id ? (
                   <div className="delete-confirm-inline">
                     <button
@@ -214,7 +425,8 @@ const History = ({ selectedMonth, selectedYear }) => {
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

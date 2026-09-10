@@ -5,10 +5,20 @@
 // happens here, at render time, and only for display.
 //
 // Display modes:
-//   USD            — amount rendered verbatim, 2 decimals.
+//   USD            — amount rendered verbatim, 2 decimals, comma grouping.
 //   VND + 'scaled' — legacy behavior: amount is interpreted as thousands and
-//                    multiplied by 1000 for display ("50" -> "50,000 VND").
-//   VND + 'exact'  — amount rendered verbatim ("1250000" -> "1,250,000 VND").
+//                    multiplied by 1000 for display ("50" -> "50.000 VND").
+//   VND + 'exact'  — amount rendered verbatim ("1250000" -> "1.250.000 VND").
+
+// Digit-grouping separator per currency convention: dots for VND (vi-VN),
+// commas for USD (en-US). Shared by the display formatter and MoneyInput so
+// typed and stored representations can never disagree on grouping.
+export const GROUP_SEPARATOR = { USD: ',', VND: '.' };
+
+export function groupDigits(digitString, currency = 'VND') {
+  const sep = GROUP_SEPARATOR[currency] ?? '.';
+  return digitString.replace(/\B(?=(\d{3})+(?!\d))/g, sep);
+}
 
 export function formatMoney(amount, currency, vndDisplayMode = 'scaled') {
   if (typeof amount !== 'number' || !isFinite(amount)) {
@@ -17,11 +27,10 @@ export function formatMoney(amount, currency, vndDisplayMode = 'scaled') {
 
   if (currency === 'VND') {
     const value = vndDisplayMode === 'exact' ? amount : amount * 1000;
-    return `${Math.round(value).toLocaleString('en-US')} VND`;
+    return `${groupDigits(String(Math.round(value)), currency)} VND`;
   }
 
-  return `${new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(amount)} USD`;
+  // USD keeps its 2-decimal minor part intact; only the integer part groups.
+  const [whole, frac] = amount.toFixed(2).split('.');
+  return `${groupDigits(whole, currency)}.${frac} USD`;
 }

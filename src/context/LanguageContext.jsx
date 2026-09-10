@@ -32,7 +32,10 @@ export const LanguageProvider = ({ children }) => {
 
   const t = useCallback((key, params = {}) => {
     const langKey = language === 'EN' ? 'en' : 'vi';
-    let value = translations[key]?.[langKey] || translations[key]?.['en'] || key;
+    // Nullish coalescing (not ||) so an intentionally empty translation
+    // (e.g. form.amountHint for EN) is respected instead of being treated
+    // as missing and leaking the raw key into the UI.
+    let value = translations[key]?.[langKey] ?? translations[key]?.['en'] ?? key;
     Object.entries(params).forEach(([k, v]) => {
       value = value.replace(`{${k}}`, v);
     });

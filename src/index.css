@@ -1260,14 +1260,6 @@ button:active::before {
   font-style: italic;
 }
 
-.input-hint {
-  display: block;
-  font-size: 0.72rem;
-  color: var(--text-tertiary);
-  margin-top: 0.25rem;
-  font-style: italic;
-}
-
 .form-group input,
 .form-group select {
   padding: 0.75rem 0.875rem;
@@ -1374,6 +1366,40 @@ button:active::before {
 .submit-button:active {
   transform: translateY(0) scale(0.98);
   filter: brightness(0.95);
+}
+
+.submit-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+  filter: none;
+}
+
+/* Secondary action (cancel edit) — quiet outline treatment so it never
+   competes with the primary submit button. */
+.cancel-edit-button {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+  padding: 0.875rem;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  margin-top: 0.5rem;
+  min-height: 48px;
+  transition: background var(--duration-normal) var(--ease-smooth),
+              color var(--duration-normal) var(--ease-smooth),
+              transform var(--duration-fast) var(--ease-out-back);
+}
+
+.cancel-edit-button:hover {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+}
+
+.cancel-edit-button:active {
+  transform: scale(0.98);
 }
 
 
@@ -1503,18 +1529,41 @@ button:active::before {
   border-radius: 8px;
   transition: color var(--duration-normal) var(--ease-smooth),
               background var(--duration-normal) var(--ease-smooth),
-              transform var(--duration-fast) var(--ease-out-back),
-              opacity var(--duration-normal) var(--ease-smooth);
+              transform var(--duration-fast) var(--ease-out-back);
   display: flex;
   align-items: center;
   justify-content: center;
   min-width: 36px;
   min-height: 36px;
-  opacity: 0;
 }
 
-.transaction-item:hover .transaction-delete-btn {
-  opacity: 1;
+/* Edit affordance stays visible at all times so the affordance is
+   discoverable on touch and mouse alike, matching the delete button. */
+.transaction-edit-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: color var(--duration-normal) var(--ease-smooth),
+              background var(--duration-normal) var(--ease-smooth),
+              transform var(--duration-fast) var(--ease-out-back);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+}
+
+.transaction-edit-btn:hover {
+  color: var(--primary);
+  background: var(--primary-glow);
+  transform: scale(1.15);
+}
+
+.transaction-edit-btn:active {
+  transform: scale(0.85);
 }
 
 .transaction-delete-btn:hover {
@@ -3445,7 +3494,8 @@ button:active::before {
     font-size: 0.85rem;
   }
 
-  .transaction-delete-btn {
+  .transaction-delete-btn,
+  .transaction-edit-btn {
     opacity: 1;
     min-width: 44px;
     min-height: 44px;
@@ -3525,11 +3575,7 @@ button:active::before {
     gap: 0.5rem;
   }
 
-    .transaction-item .transaction-delete-btn {
-    opacity: 1;
-  }
-
-  .footer {
+    .footer {
     padding: 1rem 0;
     font-size: 0.7rem;
   }

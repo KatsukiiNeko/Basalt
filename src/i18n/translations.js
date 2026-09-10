@@ -198,6 +198,38 @@ export const translations = {
     en: 'Failed to add transaction. Please try again.',
     vi: 'Thêm giao dịch thất bại. Vui lòng thử lại.'
   },
+  'form.errors.selectDate': {
+    en: 'Please choose a valid date.',
+    vi: 'Vui lòng chọn ngày hợp lệ.'
+  },
+  'form.errors.invalidTransaction': {
+    en: 'Invalid transaction data. Please try again.',
+    vi: 'Dữ liệu giao dịch không hợp lệ. Vui lòng thử lại.'
+  },
+  'form.editTitle': {
+    en: 'Edit Transaction',
+    vi: 'Chỉnh sửa giao dịch'
+  },
+  'form.submitEdit': {
+    en: 'Save Changes',
+    vi: 'Lưu thay đổi'
+  },
+  'form.cancelEdit': {
+    en: 'Cancel',
+    vi: 'Hủy'
+  },
+  'form.success.updated': {
+    en: 'Transaction updated successfully!',
+    vi: 'Cập nhật giao dịch thành công!'
+  },
+  'form.errors.updateFailed': {
+    en: 'Failed to update transaction. Please try again.',
+    vi: 'Cập nhật giao dịch thất bại. Vui lòng thử lại.'
+  },
+  'history.edit': {
+    en: 'Edit',
+    vi: 'Sửa'
+  },
 
   'cat.foodDining': {
     en: 'Food & Dining',
@@ -271,6 +303,10 @@ export const translations = {
   'history.errors.deleteFailed': {
     en: 'Failed to delete transaction',
     vi: 'Xóa giao dịch thất bại'
+  },
+  'history.errors.updateFailed': {
+    en: 'Failed to update transaction. Please try again.',
+    vi: 'Cập nhật giao dịch thất bại. Vui lòng thử lại.'
   },
   'history.delete': {
     en: 'Delete transaction',
@@ -672,30 +708,6 @@ export const translations = {
     en: 'Let\'s get you set up',
     vi: 'Hãy bắt đầu thiết lập'
   },
-  'onboarding.step1Title': {
-    en: 'Add Your First Transaction',
-    vi: 'Thêm giao dịch đầu tiên'
-  },
-  'onboarding.step1Desc': {
-    en: 'Track your income and expenses by adding transactions. Choose a category, enter the amount, and you\'re done.',
-    vi: 'Theo dõi thu nhập và chi tiêu bằng cách thêm giao dịch. Chọn danh mục, nhập số tiền, và hoàn tất.'
-  },
-  'onboarding.step2Title': {
-    en: 'Track Your Forecast',
-    vi: 'Theo dõi dự báo'
-  },
-  'onboarding.step2Desc': {
-    en: 'See where your money is going. The forecast shows your spending pace and projected balance for the month.',
-    vi: 'Xem tiền của bạn đi đâu. Dự báo cho thấy tốc độ chi tiêu và số dư dự kiến trong tháng.'
-  },
-  'onboarding.step3Title': {
-    en: 'Your Data is Secure',
-    vi: 'Dữ liệu được bảo mật'
-  },
-  'onboarding.step3Desc': {
-    en: 'All your data is encrypted and stored only on your device. Create backups in the Settings menu to keep your data safe.',
-    vi: 'Tất cả dữ liệu được mã hóa và chỉ lưu trên thiết bị. Tạo bản sao lưu trong menu Cài đặt để giữ an toàn.'
-  },
   'onboarding.skip': {
     en: 'Skip',
     vi: 'Bỏ qua'
@@ -838,9 +850,13 @@ export const translations = {
     vi: 'Quản lý mật khẩu và sao lưu tại đây'
   },
 
-  'form.amountHint': {
-    en: '',
+  'form.amountHint.scaled': {
+    en: '(unit: thousand VND)',
     vi: '(đơn vị: nghìn VNĐ)'
+  },
+  'form.amountHint.exact': {
+    en: '(unit: VND)',
+    vi: '(đơn vị: VNĐ)'
   },
   'form.amountPlaceholder': {
     en: '0.00',

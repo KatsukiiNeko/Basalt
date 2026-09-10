@@ -126,6 +126,16 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
     setRefreshKey(k => k + 1);
   };
 
+  // Edit lifecycle: History hands over the decrypted record, TransactionForm
+  // re-encrypts and updates it in place, then we clear the selection. On
+  // save, refreshKey remounts History so the updated row renders immediately.
+  const [editingTransaction, setEditingTransaction] = useState(null);
+
+  const handleEditFinished = ({ updated }) => {
+    setEditingTransaction(null);
+    if (updated) setRefreshKey(k => k + 1);
+  };
+
   const downloadBackup = (backup, suffix) => {
     const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -345,7 +355,11 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
 
       <div className="dashboard-content">
         <div className="left-column">
-          <TransactionForm onTransactionAdded={handleTransactionAdded} />
+          <TransactionForm
+            onTransactionAdded={handleTransactionAdded}
+            editingTransaction={editingTransaction}
+            onEditFinished={handleEditFinished}
+          />
         </div>
         <div className="right-column">
           <Forecast
@@ -358,6 +372,7 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
             key={refreshKey}
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}
+            onEditTransaction={setEditingTransaction}
           />
         </div>
       </div>
