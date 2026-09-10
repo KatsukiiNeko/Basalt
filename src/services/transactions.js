@@ -6,6 +6,7 @@ import {
   getSessionKey,
   encryptTransactionForStorage,
   decryptTransactionFromStorage,
+  getActiveAccountId,
 } from '../crypto/crypto';
 import { validateTransactionData } from '../crypto/transactionCrypto';
 import { SessionExpiredError } from './errors';
@@ -14,6 +15,15 @@ function requireSessionKey(accountId) {
   const key = getSessionKey(accountId);
   if (!key) throw new SessionExpiredError();
   return key;
+}
+
+// Callers may omit accountId (History's inline editor passes the decrypted
+// record, which has no account field — accountId lives on the encrypted
+// wrapper). Falling back to the ACTIVE account is safe here because every
+// writer is already session-scoped: getActiveAccountId() is exactly the
+// account whose session key requireSessionKey just validated.
+function resolveAccountId(accountId) {
+  return accountId || getActiveAccountId();
 }
 
 export async function loadAllDecrypted(accountId) {
@@ -25,7 +35,10 @@ export async function loadAllDecrypted(accountId) {
   for (const row of rows) {
     try {
       const tx = await decryptTransactionFromStorage(row, key);
+      // Self-contained record: consumers (inline editing, forms) can pass
+      // it straight back to the update service without reconstruction.
       tx.id = row.id;
+      tx.accountId = row.accountId;
       transactions.push(tx);
     } catch {
       // A single corrupt row must not blank the whole vault view, but it
@@ -37,22 +50,27 @@ export async function loadAllDecrypted(accountId) {
 }
 
 export async function addTransaction(transaction, accountId) {
-  requireSessionKey(accountId);
+  const owner = resolveAccountId(accountId);
+  requireSessionKey(owner);
   if (!validateTransactionData(transaction)) {
     throw new Error('Invalid transaction data');
   }
-  const encrypted = await encryptTransactionForStorage(transaction, getSessionKey(accountId));
-  encrypted.accountId = accountId;
+  const encrypted = await encryptTransactionForStorage(transaction, requireSessionKey(owner));
+  encrypted.accountId = owner;
   return db.transactions.add(encrypted);
 }
 
 export async function updateTransaction(id, transaction, accountId) {
-  requireSessionKey(accountId);
+  const owner = resolveAccountId(accountId);
+  requireSessionKey(owner);
   if (!validateTransactionData(transaction)) {
     throw new Error('Invalid transaction data');
   }
-  const encrypted = await encryptTransactionForStorage(transaction, getSessionKey(accountId));
-  encrypted.accountId = accountId;
+  const encrypted = await encryptTransactionForStorage(transaction, requireSessionKey(owner));
+  // CRITICAL: the row must stay inside its account scope. An undefined
+  // accountId here would make the transaction invisible to every scoped
+  // query AND to backups while still occupying the database.
+  encrypted.accountId = owner;
   encrypted.id = id;
   await db.transactions.update(id, encrypted);
 }

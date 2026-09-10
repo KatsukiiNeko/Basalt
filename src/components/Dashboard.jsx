@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { db } from '../db/db';
 import { getActiveAccountId, createSecureBackup, restoreSecureBackup, parseSecureBackup } from '../crypto/crypto';
 import { computeSummary } from '../services/transactions';
@@ -7,14 +7,18 @@ import { useVaultData } from '../hooks/useVaultData';
 import TransactionForm from './TransactionForm';
 import History from './History';
 import Forecast from './Forecast';
-import ChartsSection from './ChartsSection';
-import SettingsPanel from './SettingsPanel';
 import OnboardingOverlay from './OnboardingOverlay';
 import ThemeToggle from './ThemeToggle';
 import LanguageToggle from './LanguageToggle';
 import MonthPicker from './MonthPicker';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
+
+// ECharts (~600 KB minified) is the single largest dependency and only the
+// dashboard's chart panel needs it. Splitting it keeps the unlock -> vault
+// critical path small; the fallback keeps layout stable while it streams in.
+const ChartsSection = lazy(() => import('./ChartsSection'));
+import SettingsPanel from './SettingsPanel';
 
 // Splits formatMoney output into major/minor parts for the hero display.
 // formatMoney appends a currency suffix (" VND" / " USD"), so the minor
@@ -103,16 +107,6 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
 
   const handleTransactionAdded = () => {
     setRefreshKey(k => k + 1);
-  };
-
-  // Edit lifecycle: History hands over the decrypted record, TransactionForm
-  // re-encrypts and updates it in place, then we clear the selection. On
-  // save, refreshKey remounts History so the updated row renders immediately.
-  const [editingTransaction, setEditingTransaction] = useState(null);
-
-  const handleEditFinished = ({ updated }) => {
-    setEditingTransaction(null);
-    if (updated) setRefreshKey(k => k + 1);
   };
 
   // History's inline editors save through the transaction service; a save or
@@ -297,8 +291,6 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
         <div className="left-column">
           <TransactionForm
             onTransactionAdded={handleTransactionAdded}
-            editingTransaction={editingTransaction}
-            onEditFinished={handleEditFinished}
           />
         </div>
         <div className="right-column">
@@ -308,7 +300,15 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
             selectedYear={selectedYear}
             transactions={transactions}
           />
-          <ChartsSection transactions={transactions} />
+          <Suspense
+            fallback={
+              <section className="charts-section">
+                <div className="chart-card chart-skeleton-card"><div className="chart-skeleton" /></div>
+              </section>
+            }
+          >
+            <ChartsSection transactions={transactions} />
+          </Suspense>
           <History
             key={refreshKey}
             selectedMonth={selectedMonth}

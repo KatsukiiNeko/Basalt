@@ -206,26 +206,6 @@ export const translations = {
     en: 'Invalid transaction data. Please try again.',
     vi: 'Dữ liệu giao dịch không hợp lệ. Vui lòng thử lại.'
   },
-  'form.editTitle': {
-    en: 'Edit Transaction',
-    vi: 'Chỉnh sửa giao dịch'
-  },
-  'form.submitEdit': {
-    en: 'Save Changes',
-    vi: 'Lưu thay đổi'
-  },
-  'form.cancelEdit': {
-    en: 'Cancel',
-    vi: 'Hủy'
-  },
-  'form.success.updated': {
-    en: 'Transaction updated successfully!',
-    vi: 'Cập nhật giao dịch thành công!'
-  },
-  'form.errors.updateFailed': {
-    en: 'Failed to update transaction. Please try again.',
-    vi: 'Cập nhật giao dịch thất bại. Vui lòng thử lại.'
-  },
   'history.edit': {
     en: 'Edit',
     vi: 'Sửa'

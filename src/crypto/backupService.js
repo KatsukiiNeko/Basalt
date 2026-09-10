@@ -204,13 +204,3 @@ export async function restoreSecureBackup(backup, password, accountId, overrideI
 
   return validTransactions.length;
 }
-
-export async function reEncryptTransactions(transactions, oldKey, newKey) {
-  const reEncrypted = [];
-  for (const tx of transactions) {
-    const plain = await decryptTransactionFromStorage(tx, oldKey);
-    const encrypted = await encryptTransactionForStorage(plain, newKey);
-    reEncrypted.push(encrypted);
-  }
-  return reEncrypted;
-}

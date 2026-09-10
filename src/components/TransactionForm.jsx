@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { addTransaction, updateTransaction } from '../services/transactions';
+import { addTransaction } from '../services/transactions';
 import { getActiveAccountId } from '../crypto/crypto';
 import { useLanguage } from '../context/LanguageContext';
 import { useCurrency } from '../context/CurrencyContext';
@@ -29,27 +29,11 @@ const EMPTY_FORM = {
   note: '',
 };
 
-const TransactionForm = ({ onTransactionAdded, editingTransaction, onEditFinished }) => {
-  // Entering edit mode re-seeds the whole form from the decrypted
-  // transaction; leaving it restores a blank add form so a cancelled edit
-  // can never leak values into the next transaction. Deriving during render
-  // from the identity change (instead of an effect) keeps this synchronous
-  // and avoids a cascading extra render.
-  const [lastEditingTx, setLastEditingTx] = useState(editingTransaction ?? null);
-  const seed = editingTransaction
-    ? {
-        date: editingTransaction.date,
-        category: editingTransaction.category,
-        amount: editingTransaction.amount,
-        note: editingTransaction.note || '',
-      }
-    : { ...EMPTY_FORM, date: new Date().toISOString().split('T')[0] };
-
-  const [form, setForm] = useState(seed);
-  if (editingTransaction !== lastEditingTx) {
-    setLastEditingTx(editingTransaction ?? null);
-    setForm(seed);
-  }
+const TransactionForm = ({ onTransactionAdded }) => {
+  const [form, setForm] = useState(() => ({
+    ...EMPTY_FORM,
+    date: new Date().toISOString().split('T')[0],
+  }));
 
   // Bumped to remount MoneyInput; its formatted draft is presentation state
   // that the parent cannot set directly (see MoneyInput docs).
@@ -59,8 +43,6 @@ const TransactionForm = ({ onTransactionAdded, editingTransaction, onEditFinishe
   const [submitting, setSubmitting] = useState(false);
   const { t } = useLanguage();
   const { currency, vndDisplayMode } = useCurrency();
-
-  const isEditing = Boolean(editingTransaction);
 
   const categories = [
     { key: 'foodDining', value: 'Food & Dining' },
@@ -100,35 +82,23 @@ const TransactionForm = ({ onTransactionAdded, editingTransaction, onEditFinishe
 
     setSubmitting(true);
     try {
-      if (isEditing) {
-        await updateTransaction(editingTransaction.id, transaction, getActiveAccountId());
-        setSuccess(t('form.success.updated'));
-        onEditFinished?.({ updated: true });
-      } else {
-        await addTransaction(transaction, getActiveAccountId());
-        setSuccess(t('form.success.added'));
-        onTransactionAdded?.();
-      }
+      await addTransaction(transaction, getActiveAccountId());
+      setSuccess(t('form.success.added'));
       setError('');
+      onTransactionAdded?.();
 
-      if (!isEditing) {
-        setForm({ ...EMPTY_FORM, date: new Date().toISOString().split('T')[0] });
-        setAmountResetKey((k) => k + 1);
-      }
+      setForm({ ...EMPTY_FORM, date: new Date().toISOString().split('T')[0] });
+      setAmountResetKey((k) => k + 1);
     } catch {
-      setError(isEditing ? t('form.errors.updateFailed') : t('form.errors.addFailed'));
+      setError(t('form.errors.addFailed'));
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleCancelEdit = () => {
-    onEditFinished?.({ cancelled: true });
-  };
-
   return (
     <div className="transaction-form-container">
-      <h2>{isEditing ? t('form.editTitle') : t('form.title')}</h2>
+      <h2>{t('form.title')}</h2>
       <form onSubmit={handleSubmit} className="transaction-form">
         <div className="form-row">
           <div className="form-group">
@@ -173,9 +143,9 @@ const TransactionForm = ({ onTransactionAdded, editingTransaction, onEditFinishe
           <div className="form-group">
             <label htmlFor="amount">{t('form.amount')}</label>
             <MoneyInput
-              // Remounts on edit-mode transitions (seeding the draft) and
-              // after each add (clearing it) — never mid-edit.
-              key={`${amountResetKey}-${editingTransaction ? editingTransaction.id : 'new'}`}
+              // Remounts after each successful add so the formatted draft
+              // starts clean — never mid-edit.
+              key={amountResetKey}
               id="amount"
               currency={currency}
               initialValue={form.amount == null ? '' : String(form.amount)}
@@ -209,13 +179,8 @@ const TransactionForm = ({ onTransactionAdded, editingTransaction, onEditFinishe
         {success && <div className="success-message">{success}</div>}
 
         <button type="submit" className="submit-button" disabled={submitting}>
-          {isEditing ? t('form.submitEdit') : t('form.submit')}
+          {t('form.submit')}
         </button>
-        {isEditing && (
-          <button type="button" className="cancel-edit-button" onClick={handleCancelEdit}>
-            {t('form.cancelEdit')}
-          </button>
-        )}
       </form>
     </div>
   );

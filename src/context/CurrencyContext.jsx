@@ -42,10 +42,6 @@ export const CurrencyProvider = ({ children }) => {
     persist(CURRENCY_KEY, next);
   };
 
-  const toggleCurrency = () => {
-    setCurrency(currency === 'USD' ? 'VND' : 'USD');
-  };
-
   const setVndDisplayMode = (mode) => {
     setVndDisplayModeState(mode);
     persist(VND_MODE_KEY, mode);
@@ -56,7 +52,7 @@ export const CurrencyProvider = ({ children }) => {
 
   return (
     <CurrencyContext.Provider
-      value={{ currency, setCurrency, toggleCurrency, vndDisplayMode, setVndDisplayMode, formatCurrency }}
+      value={{ currency, setCurrency, vndDisplayMode, setVndDisplayMode, formatCurrency }}
     >
       {children}
     </CurrencyContext.Provider>

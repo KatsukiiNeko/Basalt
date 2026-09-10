@@ -1,7 +1,9 @@
 // Service worker for the Basalt PWA. CACHE_NAME is versioned so the
 // activate handler deletes stale caches on deploy; bump vN to force
-// every client to re-fetch the precache manifest.
-const CACHE_NAME = 'basalt-cache-v5';
+// every client to re-fetch the precache manifest. The V2 build splits
+// ECharts into a lazy chunk — it is NOT precached (added to cache on
+// first fetch below) so installs stay lean; it self-caches once used.
+const CACHE_NAME = 'basalt-cache-v6';
 const FILES_TO_CACHE = [
   '/',
   '/index.html',

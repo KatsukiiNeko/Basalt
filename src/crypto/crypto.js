@@ -40,8 +40,7 @@ export {
   restoreBackup,
   createSecureBackup,
   parseSecureBackup,
-  restoreSecureBackup,
-  reEncryptTransactions
+  restoreSecureBackup
 } from './backupService';
 
 export { validateTransactionData } from './transactionCrypto';
