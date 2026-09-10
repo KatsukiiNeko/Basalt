@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { db } from '../db/db';
-import { getSessionKey, decryptTransactionFromStorage, encryptData, decryptData, generateIV, getActiveAccountId, createSecureBackup, restoreSecureBackup, parseSecureBackup } from '../crypto/crypto';
+import { getActiveAccountId, createSecureBackup, restoreSecureBackup, parseSecureBackup } from '../crypto/crypto';
+import { computeSummary } from '../services/transactions';
+import { createQuickBackup, restoreQuickBackup } from '../services/backup';
+import { useVaultData } from '../hooks/useVaultData';
 import TransactionForm from './TransactionForm';
 import History from './History';
 import Forecast from './Forecast';
@@ -13,17 +16,20 @@ import MonthPicker from './MonthPicker';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 
+// Splits formatMoney output into major/minor parts for the hero display.
+// formatMoney appends a currency suffix (" VND" / " USD"), so the minor
+// part must be matched inside the numeric body, never against the suffix.
 const formatBalanceParts = (amount, formatCurrency) => {
   const formatted = formatCurrency(amount);
-  const match = formatted.match(/^(.*?)(\.\d{2})?$/);
+  const body = formatted.replace(/ (VND|USD)$/, '');
+  const match = body.match(/^(.*?)(\.[\d]{2})?$/);
   if (match) {
     return { major: match[1], minor: match[2] || '' };
   }
-  return { major: formatted, minor: '' };
+  return { major: body, minor: '' };
 };
 
 const Dashboard = ({ onLogout, onSwitchAccount }) => {
-  const [balance, setBalance] = useState({ income: 0, expenses: 0, totalBalance: 0 });
   const [refreshKey, setRefreshKey] = useState(0);
   const [accountName, setAccountName] = useState('');
   const [editingName, setEditingName] = useState(false);
@@ -35,7 +41,6 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
-  const [monthData, setMonthData] = useState(new Set());
   const { formatCurrency } = useCurrency();
   const { t } = useLanguage();
 
@@ -46,63 +51,34 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
       try {
         const account = await db.accounts.get(accountId);
         if (account) setAccountName(account.name);
-      } catch { }
+      } catch {
+        // The account row is metadata only — an unreadable name degrades to
+        // the empty string, never a broken dashboard.
+      }
     };
     loadAccount();
   }, [accountId]);
 
-  useEffect(() => {
-    const calculateBalance = async () => {
-      try {
-        const key = getSessionKey();
-        if (!key) return;
-
-        const allEncrypted = await db.transactions.where('accountId').equals(accountId).toArray();
-        let totalIncome = 0;
-        let totalExpenses = 0;
-        let allTimeIncome = 0;
-        let allTimeExpenses = 0;
-        const monthsWithData = new Set();
-
-        const monthStart = new Date(selectedYear, selectedMonth, 1);
-        const monthEnd = new Date(selectedYear, selectedMonth + 1, 1);
-
-        for (const enc of allEncrypted) {
-          try {
-            const tx = await decryptTransactionFromStorage(enc, key);
-            if (tx.type === 'income') {
-              allTimeIncome += tx.amount;
-            } else {
-              allTimeExpenses += tx.amount;
-            }
-            const dateStr = tx.date;
-            const monthKey = dateStr.slice(0, 7);
-            monthsWithData.add(monthKey);
-            const [y, m, d] = dateStr.split('-').map(Number);
-            const txDate = new Date(y, m - 1, d);
-            if (txDate >= monthStart && txDate < monthEnd) {
-              if (tx.type === 'income') {
-                totalIncome += tx.amount;
-              } else {
-                totalExpenses += tx.amount;
-              }
-            }
-          } catch {
-          }
-        }
-
-        setMonthData(monthsWithData);
-
-        setBalance({
-          income: totalIncome,
-          expenses: totalExpenses,
-          totalBalance: allTimeIncome - allTimeExpenses
-        });
-      } catch { }
-    };
-
-    calculateBalance();
-  }, [refreshKey, accountId, selectedMonth, selectedYear]);
+  // Single decrypted load per (account, refreshKey). Children receive
+  // plain records — History/Forecast/ChartsSection no longer each decrypt
+  // the full table on their own (three redundant passes per refresh).
+  const vault = useVaultData(accountId, refreshKey);
+  // Stable empty array keeps useMemo dependencies identity-stable across
+  // renders while the vault is still loading.
+  const transactions = useMemo(
+    () => (vault.status === 'ready' ? vault.transactions : []),
+    [vault]
+  );
+  const summary = useMemo(
+    () => computeSummary(transactions, selectedYear, selectedMonth),
+    [transactions, selectedYear, selectedMonth]
+  );
+  const balance = {
+    income: summary.monthIncome,
+    expenses: summary.monthExpenses,
+    totalBalance: summary.totalBalance,
+  };
+  const monthData = summary.monthsWithData;
 
   const handleRename = async () => {
     const trimmed = editValue.trim();
@@ -113,7 +89,10 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
     try {
       await db.accounts.update(accountId, { name: trimmed });
       setAccountName(trimmed);
-    } catch { }
+    } catch {
+      // Rename failing leaves the old name in place; the edit simply didn't
+      // take. The user sees the previous name and can retry.
+    }
     setEditingName(false);
   };
 
@@ -136,6 +115,10 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
     if (updated) setRefreshKey(k => k + 1);
   };
 
+  // History's inline editors save through the transaction service; a save or
+  // delete bumps the shared vault so every panel stays consistent.
+  const handleHistoryEdited = () => setRefreshKey(k => k + 1);
+
   const downloadBackup = (backup, suffix) => {
     const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -149,28 +132,7 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
   };
 
   const handleBackup = async () => {
-    const key = getSessionKey();
-    if (!key) throw new Error(t('dashboard.sessionExpired'));
-
-    const allEncrypted = await db.transactions.where('accountId').equals(accountId).toArray();
-
-    const backupData = {
-      transactions: allEncrypted,
-      timestamp: new Date().toISOString(),
-      version: 2
-    };
-
-    const iv = generateIV();
-    const jsonString = JSON.stringify(backupData);
-    const encrypted = await encryptData(jsonString, key, iv);
-
-    const backup = {
-      iv: Array.from(iv),
-      ciphertext: Array.from(new Uint8Array(encrypted)),
-      version: 2,
-      algorithm: 'AES-GCM-256'
-    };
-
+    const backup = await createQuickBackup(accountId);
     downloadBackup(backup, 'backup');
   };
 
@@ -199,10 +161,10 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
     });
   };
 
+  // Reads a backup file and routes it by version: v3 (secure) and v1
+  // (legacy) hand off to BackupRestore's password flow; v2 restores here
+  // with the session key.
   const handleRestore = async () => {
-    const key = getSessionKey();
-    if (!key) throw new Error(t('dashboard.sessionExpired'));
-
     const backup = await readBackupFile();
 
     if (backup.version === 3) {
@@ -211,31 +173,9 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
     }
 
     if (backup.version === 2 || !backup.version) {
-      if (!backup.iv || !backup.ciphertext) {
-        throw new Error(t('dashboard.invalidBackupFormat'));
-      }
-
-      const iv = new Uint8Array(backup.iv);
-      const ciphertext = new Uint8Array(backup.ciphertext);
-      const decrypted = await decryptData(ciphertext, key, iv);
-      const backupData = JSON.parse(decrypted);
-
-      if (!backupData.transactions || !Array.isArray(backupData.transactions)) {
-        throw new Error(t('dashboard.invalidBackupData'));
-      }
-
-      const transactionsWithAccount = backupData.transactions.map(tx => ({
-        ...tx,
-        accountId
-      }));
-
-      await db.transaction('rw', db.transactions, async () => {
-        await db.transactions.where('accountId').equals(accountId).delete();
-        await db.transactions.bulkAdd(transactionsWithAccount);
-      });
-
+      const count = await restoreQuickBackup(backup, accountId);
       setRefreshKey(k => k + 1);
-      return { format: 'quick', count: transactionsWithAccount.length };
+      return { format: 'quick', count };
     }
 
     if (backup.version === 1) {
@@ -366,13 +306,15 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
             currentBalance={balance.totalBalance}
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}
+            transactions={transactions}
           />
-          <ChartsSection refreshKey={refreshKey} />
+          <ChartsSection transactions={transactions} />
           <History
             key={refreshKey}
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}
-            onEditTransaction={setEditingTransaction}
+            transactions={transactions}
+            onEditTransaction={handleHistoryEdited}
           />
         </div>
       </div>

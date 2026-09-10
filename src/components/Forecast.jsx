@@ -1,13 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { calculateForecast } from '../utils/forecast';
 import { db } from '../db/db';
-import { getSessionKey, decryptTransactionFromStorage, getActiveAccountId } from '../crypto/crypto';
+import { getActiveAccountId } from '../crypto/crypto';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 
-const Forecast = ({ currentBalance = 0, selectedMonth, selectedYear }) => {
-  const [forecastData, setForecastData] = useState(null);
-  const [loading, setLoading] = useState(true);
+const Forecast = ({ currentBalance = 0, selectedMonth, selectedYear, transactions = [] }) => {
   const [correctionFactor, setCorrectionFactor] = useState(null);
   const [editingProjected, setEditingProjected] = useState(false);
   const [editedValue, setEditedValue] = useState('');
@@ -15,7 +13,8 @@ const Forecast = ({ currentBalance = 0, selectedMonth, selectedYear }) => {
   const { formatCurrency } = useCurrency();
   const { t } = useLanguage();
 
-  const correctionKey = `forecastCorrection:${getActiveAccountId()}`;
+  const accountId = getActiveAccountId();
+  const correctionKey = `forecastCorrection:${accountId}`;
 
   useEffect(() => {
     const loadCorrection = async () => {
@@ -24,40 +23,21 @@ const Forecast = ({ currentBalance = 0, selectedMonth, selectedYear }) => {
         if (stored && stored.value) {
           setCorrectionFactor(stored.value);
         }
-      } catch {}
+      } catch {
+        // Forecast correction is a per-account preference, not vault data —
+        // an unreadable value just means this month's default forecast.
+      }
     };
     loadCorrection();
   }, [correctionKey]);
 
-  useEffect(() => {
-    const loadForecast = async () => {
-      try {
-        const key = getSessionKey();
-        if (!key) {
-          setLoading(false);
-          return;
-        }
-
-        const allEncrypted = await db.transactions.where('accountId').equals(getActiveAccountId()).toArray();
-        const transactions = [];
-        for (const enc of allEncrypted) {
-          try {
-            const tx = await decryptTransactionFromStorage(enc, key);
-            transactions.push(tx);
-          } catch {}
-        }
-
-        const currentDate = new Date(selectedYear, selectedMonth, 1);
-        const forecast = calculateForecast(transactions, currentBalance, currentDate, correctionFactor);
-        setForecastData(forecast);
-        setLoading(false);
-      } catch {
-        setLoading(false);
-      }
-    };
-
-    loadForecast();
-  }, [currentBalance, selectedMonth, selectedYear, correctionFactor]);
+  // Derived during render: the forecast is a pure function of the shared
+  // vault data + the correction, so re-computing in an effect would only add
+  // a flash of stale state.
+  const forecastData = useMemo(() => {
+    const currentDate = new Date(selectedYear, selectedMonth, 1);
+    return calculateForecast(transactions, currentBalance, currentDate, correctionFactor);
+  }, [transactions, currentBalance, selectedMonth, selectedYear, correctionFactor]);
 
   useEffect(() => {
     if (editingProjected && editInputRef.current) {
@@ -82,27 +62,14 @@ const Forecast = ({ currentBalance = 0, selectedMonth, selectedYear }) => {
       try {
         await db.settings.put({ key: correctionKey, value: newCorrection });
         setCorrectionFactor(newCorrection);
-      } catch {}
+      } catch {
+        // A correction is a preference, not vault data — failing to persist
+        // it still leaves the model-based forecast intact for this session.
+      }
     }
 
     setEditingProjected(false);
   };
-
-  if (loading) {
-    return (
-      <div className="forecast-container">
-        <h2>{t('forecast.title')}</h2>
-        <div className="forecast-content">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="skeleton-forecast-item">
-              <div className="skeleton skeleton-text" style={{ width: '40%' }} />
-              <div className="skeleton skeleton-amount" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   if (!forecastData) {
     return (

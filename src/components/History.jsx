@@ -1,7 +1,5 @@
-import { useState, useEffect } from 'react';
-import { db } from '../db/db';
-import { getSessionKey, decryptTransactionFromStorage, encryptTransactionForStorage, getActiveAccountId } from '../crypto/crypto';
-import { validateTransactionData } from '../crypto/transactionCrypto';
+import { useState } from 'react';
+import { updateTransaction, deleteTransaction } from '../services/transactions';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { categoryValueToKey } from '../i18n/translations';
@@ -73,56 +71,23 @@ const CategoryIcon = ({ category }) => {
   );
 };
 
-const History = ({ selectedMonth, selectedYear }) => {
-  const [allTransactions, setAllTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction }) => {
   const [deletingId, setDeletingId] = useState(null);
   // Inline-edit state. "editingId" holds a persistent row-level enabling state
   // (the purple glow); "editingField + editDraft" drive one active inline editor
-  // at a time. Source stays encrypted at rest — we only decrypt for display and
-  // re-encrypt on save.
+  // at a time. Source stays encrypted at rest — the service layer re-encrypts
+  // on save; this component only ever handles decrypted records.
   const [editingId, setEditingId] = useState(null);
   const [editingField, setEditingField] = useState(null);
   const [editDraft, setEditDraft] = useState('');
   // Field-level validation while an inline editor is open. Kept separate from
   // the global `error` banner so a bad value in one field doesn't blank the list.
   const [fieldError, setFieldError] = useState('');
+  const [error, setError] = useState('');
   const { formatCurrency } = useCurrency();
   const { t, language } = useLanguage();
 
-  useEffect(() => {
-    const fetchTransactions = async () => {
-      try {
-        const key = getSessionKey();
-        if (!key) {
-          setError(t('history.errors.sessionExpired'));
-          setLoading(false);
-          return;
-        }
-
-        const allEncrypted = await db.transactions.where('accountId').equals(getActiveAccountId()).toArray();
-        const decrypted = [];
-        for (const enc of allEncrypted) {
-          try {
-            const tx = await decryptTransactionFromStorage(enc, key);
-            tx.id = enc.id;
-            decrypted.push(tx);
-          } catch {
-          }
-        }
-        setAllTransactions(decrypted);
-        setLoading(false);
-      } catch {
-        setError(t('history.errors.loadFailed'));
-        setLoading(false);
-      }
-    };
-
-    fetchTransactions();
-  }, [t]);
-
-  const transactions = allTransactions
+  const monthTransactions = transactions
     .filter(tx => {
       const [y, m] = tx.date.split('-').map(Number);
       return m - 1 === selectedMonth && y === selectedYear;
@@ -131,9 +96,9 @@ const History = ({ selectedMonth, selectedYear }) => {
 
   const handleDelete = async (id) => {
     try {
-      await db.transactions.delete(id);
-      setAllTransactions(prev => prev.filter(tx => tx.id !== id));
+      await deleteTransaction(id);
       setDeletingId(null);
+      onEditTransaction?.();
     } catch {
       setError(t('history.errors.deleteFailed'));
     }
@@ -167,11 +132,6 @@ const History = ({ selectedMonth, selectedYear }) => {
 
   const commitFieldEdit = async (tx, field, valueOverride) => {
     if (editingId !== tx.id) return;
-    const key = getSessionKey();
-    if (!key) {
-      setError(t('history.errors.sessionExpired'));
-      return;
-    }
     // valueOverride lets callers (e.g. the category <select>) commit the picked
     // value synchronously without depending on a queued setEditDraft.
     const value = valueOverride !== undefined ? valueOverride : editDraft;
@@ -196,23 +156,21 @@ const History = ({ selectedMonth, selectedYear }) => {
       next.date = value;
     }
 
-    if (!validateTransactionData(next)) {
-      setFieldError(t('form.errors.invalidTransaction'));
-      return;
-    }
-
     setEditingField(null);
     setEditDraft('');
     setFieldError('');
 
     try {
-      next.accountId = getActiveAccountId();
-      const encrypted = await encryptTransactionForStorage(next, key);
-      encrypted.id = tx.id;
-      await db.transactions.update(tx.id, encrypted);
-      setAllTransactions((prev) => prev.map((p) => (p.id === tx.id ? next : p)));
-    } catch {
-      setError(t('history.errors.updateFailed'));
+      await updateTransaction(tx.id, next, next.accountId);
+      onEditTransaction?.();
+    } catch (err) {
+      // The list stays mounted and the row intact: a failed inline edit must
+      // not blank the month's history. Re-open the editor so the typed value
+      // survives and the failure is shown next to it.
+      setEditingField(field);
+      setFieldError(err.code === 'SESSION_EXPIRED'
+        ? t('history.errors.sessionExpired')
+        : t('history.errors.updateFailed'));
     }
   };
 
@@ -232,35 +190,13 @@ const History = ({ selectedMonth, selectedYear }) => {
     });
   };
 
-  if (loading) {
-    return (
-      <div className="transaction-history">
-        <h2>{t('history.title')}</h2>
-        <div className="transactions-list">
-          {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="skeleton-row">
-              <div className="skeleton skeleton-icon" />
-              <div className="skeleton-row-content">
-                <div className="skeleton skeleton-text medium" />
-                <div className="skeleton skeleton-text short" />
-              </div>
-              <div className="skeleton skeleton-amount" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return <div className="error">{error}</div>;
-  }
-
   return (
     <div className="transaction-history">
       <h2>{t('history.title')}</h2>
 
-      {transactions.length === 0 ? (
+      {error && <div className="error-message" role="alert">{error}</div>}
+
+      {monthTransactions.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -277,7 +213,7 @@ const History = ({ selectedMonth, selectedYear }) => {
         </div>
       ) : (
         <div className="transactions-list">
-          {transactions.map((transaction) => {
+          {monthTransactions.map((transaction) => {
             const rowArmed = editingId === transaction.id;
             const openEditor = (field) => openFieldEditor(transaction, field);
             return (

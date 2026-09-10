@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { db } from '../db/db';
-import { getSessionKey, encryptTransactionForStorage, getActiveAccountId } from '../crypto/crypto';
-import { validateTransactionData } from '../crypto/transactionCrypto';
+import { addTransaction, updateTransaction } from '../services/transactions';
+import { getActiveAccountId } from '../crypto/crypto';
 import { useLanguage } from '../context/LanguageContext';
 import { useCurrency } from '../context/CurrencyContext';
 import MoneyInput from './MoneyInput';
@@ -99,34 +98,14 @@ const TransactionForm = ({ onTransactionAdded, editingTransaction, onEditFinishe
       note: form.note
     };
 
-    // Same validation the persistence layer enforces on read — catches bad
-    // state before an encryption round-trip or DB write.
-    if (!validateTransactionData(transaction)) {
-      setError(t('form.errors.invalidAmount'));
-      return;
-    }
-
-    const key = getSessionKey();
-    if (!key) {
-      setError(t('form.errors.sessionExpired'));
-      return;
-    }
-
     setSubmitting(true);
     try {
-      // Editing follows the existing decrypt -> modify -> encrypt -> persist
-      // flow: History hands us the decrypted record, we re-encrypt the whole
-      // object here, keyed by the ORIGINAL id via update() so no duplicate
-      // row is created.
-      const encrypted = await encryptTransactionForStorage(transaction, key);
-      encrypted.accountId = getActiveAccountId();
-
       if (isEditing) {
-        await db.transactions.update(editingTransaction.id, encrypted);
+        await updateTransaction(editingTransaction.id, transaction, getActiveAccountId());
         setSuccess(t('form.success.updated'));
         onEditFinished?.({ updated: true });
       } else {
-        await db.transactions.add(encrypted);
+        await addTransaction(transaction, getActiveAccountId());
         setSuccess(t('form.success.added'));
         onTransactionAdded?.();
       }

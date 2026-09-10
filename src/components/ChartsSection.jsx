@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
+import { useEffect, useRef, useMemo, useCallback } from 'react';
 import * as echarts from 'echarts/core';
 import { PieChart, BarChart, LineChart } from 'echarts/charts';
 import {
@@ -9,8 +9,6 @@ import {
   GraphicComponent,
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import { db } from '../db/db';
-import { getSessionKey, decryptTransactionFromStorage, getActiveAccountId } from '../crypto/crypto';
 import { aggregateExpensesByCategory, getTopCategories, aggregateMonthlyTrend } from '../utils/chartData';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -96,22 +94,19 @@ function formatMonthLabel(ym, language = 'EN') {
 }
 
 /**
- * Own the full ECharts instance lifecycle for one container: init, option
- * application, window resize handling, and disposal on unmount.
+ * Own the ECharts instance lifecycle for one container. The instance is
+ * created once per mount and every option change is applied via setOption
+ * — disposing and re-initialising on each data change (the pre-V2 approach)
+ * re-allocates the canvas and drops tooltip state on every refresh.
  */
 function useECharts(option, containerRef, onReady) {
   const chartRef = useRef(null);
 
-  // Re-create the chart whenever `option` changes so event handlers always
-  // have access to the latest data.  For the transaction volumes seen here
-  // this is fast enough and far simpler than manually re-binding events.
   useEffect(() => {
     if (!containerRef.current) return;
 
     chartRef.current = echarts.init(containerRef.current, null, { renderer: 'canvas' });
     if (onReady) onReady(chartRef.current);
-
-    chartRef.current.setOption(option, { notMerge: true });
 
     const handleResize = () => {
       chartRef.current?.resize();
@@ -132,9 +127,14 @@ function useECharts(option, containerRef, onReady) {
       chartRef.current?.dispose();
       chartRef.current = null;
     };
-    // We intentionally run on every option change to keep event handlers fresh.
-    // containerRef and onReady are stable across renders.
+    // Init runs once per mount. containerRef and onReady are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (option && chartRef.current) {
+      chartRef.current.setOption(option, { notMerge: true });
+    }
   }, [option]);
 }
 
@@ -613,84 +613,32 @@ export function MonthlyTrendLine({ months, income, expense, net, formatCurrency,
  * Mobile: single-column vertical stack.
  * Desktop: two-column grid (line chart spans full width, doughnut + bar side-by-side).
  */
-export default function ChartsSection({ refreshKey }) {
-  const [allTransactions, setAllTransactions] = useState(null);
-  const [error, setError] = useState('');
+export default function ChartsSection({ transactions }) {
   const { formatCurrency } = useCurrency();
   const { t, language } = useLanguage();
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const key = getSessionKey();
-        if (!key) {
-          if (!cancelled) setError(t('errors.sessionExpired'));
-          return;
-        }
-        const encrypted = await db.transactions.where('accountId').equals(getActiveAccountId()).toArray();
-        const decrypted = [];
-        for (const enc of encrypted) {
-          try {
-            const tx = await decryptTransactionFromStorage(enc, key);
-            decrypted.push(tx);
-          } catch { /* skip corrupted entries */ }
-        }
-        if (!cancelled) setAllTransactions(decrypted);
-      } catch {
-        if (!cancelled) setError(t('errors.chartLoadFailed'));
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, [refreshKey, t]);
-
   const { expenseCategories, topCategories, totalExpenses, trend } = useMemo(() => {
-    if (!allTransactions) return { expenseCategories: [], topCategories: [], totalExpenses: 0, trend: { months: [], income: [], expense: [], net: [] } };
-    const { categories: expenseCats, totalExpenses: tot } = aggregateExpensesByCategory(allTransactions);
-    const { categories: topCats } = getTopCategories(allTransactions, TOP_N);
-    const { months, income, expense, net } = aggregateMonthlyTrend(allTransactions);
+    if (!transactions || transactions.length === 0) return { expenseCategories: [], topCategories: [], totalExpenses: 0, trend: { months: [], income: [], expense: [], net: [] } };
+    const { categories: expenseCats, totalExpenses: tot } = aggregateExpensesByCategory(transactions);
+    const { categories: topCats } = getTopCategories(transactions, TOP_N);
+    const { months, income, expense, net } = aggregateMonthlyTrend(transactions);
     return {
       expenseCategories: expenseCats,
       topCategories: topCats,
       totalExpenses: tot,
       trend: { months, income, expense, net },
     };
-  }, [allTransactions]);
+  }, [transactions]);
 
-  // Loading skeleton
-  if (allTransactions === null && !error) {
-    return (
-      <section className="charts-section">
-        <div className="chart-card chart-skeleton-card"><div className="chart-skeleton" /></div>
-        <div className="chart-card-row">
-          <div className="chart-card chart-skeleton-card"><div className="chart-skeleton chart-skeleton-doughnut" /></div>
-          <div className="chart-card chart-skeleton-card"><div className="chart-skeleton chart-skeleton-bar" /></div>
-        </div>
-      </section>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <section className="charts-section">
-        <div className="chart-card chart-error-card">
-          <p className="chart-error-text">{error}</p>
-        </div>
-      </section>
-    );
-  }
-
-  // Empty state
-  if (!allTransactions || allTransactions.length === 0) {
+  // Empty state — the shared vault load owns loading/error presentation.
+  if (!transactions || transactions.length === 0) {
     return (
       <section className="charts-section">
         <div className="chart-card chart-empty-card">
           <svg className="chart-empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" />
           </svg>
-          <p>{t?.('empty.transactions.desc') || 'Add transactions to see charts'}</p>
+          <p>{t('empty.transactions.desc')}</p>
         </div>
       </section>
     );
