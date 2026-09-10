@@ -52,7 +52,7 @@ The application supports multiple accounts, each with its own encrypted vault, a
 - **Installable PWA** — works offline like a native app
 - **Dark/Light theme** — system-aware with manual toggle
 - **Zero network footprint** — `connect-src 'none'` CSP, no analytics, no telemetry
-- **Explicit VND display modes** — first-run choice between Full VND (1.250.000 VND) and Thousand VND (1.250K VND, the K marks thousands); changeable anytime in Settings with a live example; stored values are unit-neutral either way
+- **Explicit VND display modes** — first-run choice between Full VND (`1250000` → `1.250.000 VND`) and Thousand VND (`1250` → `1.250.000 VND`, stored value interpreted as thousands); changeable anytime in Settings with a live example; stored values are unit-neutral either way
 - **186 automated tests** — crypto round-trips, forecasting, lockout escalation, DB migrations, account isolation, backup restore, service layer, full i18n surface (Vitest + fake-indexeddb)
 
 ---

@@ -7,9 +7,7 @@
 // Display modes:
 //   USD            — amount rendered verbatim, 2 decimals, comma grouping.
 //   VND + 'scaled' — legacy behavior: amount is interpreted as thousands and
-//                    multiplied by 1000 for display ("50" -> "50K VND").
-//                    The K suffix is load-bearing: it is what keeps a value
-//                    entered in thousands from reading as plain đồng.
+//                    multiplied by 1000 for display ("50" -> "50.000 VND").
 //   VND + 'exact'  — amount rendered verbatim ("1250000" -> "1.250.000 VND").
 
 // Digit-grouping separator per currency convention: dots for VND (vi-VN),
@@ -28,14 +26,8 @@ export function formatMoney(amount, currency, vndDisplayMode = 'scaled') {
   }
 
   if (currency === 'VND') {
-    if (vndDisplayMode === 'exact') {
-      return `${groupDigits(String(Math.round(amount)), currency)} VND`;
-    }
-    // Scaled: the stored number is thousands of dong. Rendering the raw
-    // scaled number with a K marker states the unit unambiguously — the
-    // pre-V2 plain rendering ("1.250 VND") is exactly the confusion the
-    // onboarding wizard exists to prevent.
-    return `${groupDigits(String(Math.round(amount)), currency)}K VND`;
+    const value = vndDisplayMode === 'exact' ? amount : amount * 1000;
+    return `${groupDigits(String(Math.round(value)), currency)} VND`;
   }
 
   // USD keeps its 2-decimal minor part intact; only the integer part groups.

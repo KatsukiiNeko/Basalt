@@ -58,8 +58,9 @@ describe('persisted config drives formatting consistently', () => {
 
     const view = (cur, mode) => formatMoney(stored, cur, mode);
 
-    // VND scaled: stored value IS thousands of dong, stated explicitly.
-    expect(view('VND', 'scaled')).toBe('1.250K VND');
+    // VND scaled: stored value IS thousands of dong, multiplied to full
+    // digits for display.
+    expect(view('VND', 'scaled')).toBe('1.250.000 VND');
     // VND exact: stored value IS dong.
     expect(view('VND', 'exact')).toBe('1.250 VND');
     // USD ignores vnd-mode entirely.
