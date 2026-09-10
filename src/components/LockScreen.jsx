@@ -1,77 +1,22 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { deriveKey, generateSalt, createVerificationToken, verifyPassword, setSessionKey, encryptTransactionForStorage, decryptTransactionFromStorage, PBKDF2_ITERATIONS } from '../crypto/crypto';
+import { useState, useEffect, useRef } from 'react';
 import { db } from '../db/db';
+import { setSessionKey, PBKDF2_ITERATIONS } from '../crypto/crypto';
+import { unlockAttempt, setupPassword, upgradePbkdf2 } from '../services/auth';
+import {
+  checkPwdLockout,
+  getPwdLockoutState,
+  recordPwdFailedAttempt,
+  recordPwdSuccessfulAttempt,
+  getPoWChallenge,
+  computeProofOfWork,
+} from '../utils/lockout';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from './LanguageToggle';
 import ThemeToggle from './ThemeToggle';
 
-const ATTEMPT_STORAGE_KEY = 'mv_cumulative_attempts';
-
-const getLockoutDuration = (attempts) => {
-  if (attempts >= 20) return 10 * 60 * 1000;
-  if (attempts >= 15) return 5 * 60 * 1000;
-  if (attempts >= 10) return 2 * 60 * 1000;
-  if (attempts >= 5)  return 30 * 1000;
-  return 0;
-};
-
-const getLocalAttempts = (accountId) => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(ATTEMPT_STORAGE_KEY) || '{}');
-    return stored[accountId]?.attempts || 0;
-  } catch { return 0; }
-};
-
-const setLocalAttempts = (accountId, attempts) => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(ATTEMPT_STORAGE_KEY) || '{}');
-    stored[accountId] = { attempts, lastAttempt: Date.now() };
-    localStorage.setItem(ATTEMPT_STORAGE_KEY, JSON.stringify(stored));
-  } catch { }
-};
-
-const clearLocalAttempts = (accountId) => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(ATTEMPT_STORAGE_KEY) || '{}');
-    delete stored[accountId];
-    localStorage.setItem(ATTEMPT_STORAGE_KEY, JSON.stringify(stored));
-  } catch { }
-};
-
-const upgradePbkdf2Iterations = async (accountId, password) => {
-  try {
-    const salt = await db.settings.get('salt:' + accountId);
-    if (!salt) return;
-
-    const saltArray = new Uint8Array(Object.values(salt.value));
-    const oldKey = await deriveKey(password, saltArray, 200000);
-    const newSalt = generateSalt();
-    const newKey = await deriveKey(password, newSalt, PBKDF2_ITERATIONS);
-
-    const allEncrypted = await db.transactions.where('accountId').equals(accountId).toArray();
-    const reEncrypted = [];
-    for (const tx of allEncrypted) {
-      try {
-        const plain = await decryptTransactionFromStorage(tx, oldKey);
-        const encrypted = await encryptTransactionForStorage(plain, newKey);
-        encrypted.accountId = accountId;
-        reEncrypted.push(encrypted);
-      } catch { }
-    }
-
-    const newToken = await createVerificationToken(newKey);
-
-    await db.transaction('rw', db.transactions, db.settings, async () => {
-      await db.transactions.where('accountId').equals(accountId).delete();
-      await db.transactions.bulkAdd(reEncrypted);
-      await db.settings.put({ key: 'salt:' + accountId, value: Array.from(newSalt) });
-      await db.settings.put({ key: 'verificationToken:' + accountId, value: newToken });
-      await db.settings.put({ key: 'pbkdf2Version:' + accountId, value: PBKDF2_ITERATIONS });
-    });
-
-    setSessionKey(newKey, accountId);
-  } catch { }
-};
+// Unlock surfaces the same brute-force defenses the backup flow already
+// uses (triple-store lockout, escalating PBKDF2, PoW, session hard cap) —
+// previously it ran a weaker parallel inline system.
 
 const LockScreen = ({ accountId, onUnlock, onBack }) => {
   const [password, setPassword] = useState('');
@@ -95,35 +40,30 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
       try {
         const account = await db.accounts.get(accountId);
         if (account) setAccountDisplayName(account.name);
-      } catch { }
+      } catch {
+        // Name is cosmetic; the unlock flow must proceed without it.
+      }
 
       try {
         const passwordSet = await db.settings.get('passwordSet:' + accountId);
         if (!passwordSet) setIsFirstTime(true);
-      } catch { }
+      } catch {
+        // If auth settings are unreadable the unlock path below surfaces
+        // the corruption explicitly; nothing to do here.
+      }
 
       try {
-        const lockoutData = await db.settings.get('lockoutData:' + accountId);
-        const localAttempts = getLocalAttempts(accountId);
-        let maxAttempts = 0;
-        let existingEndTime = 0;
-
-        if (lockoutData?.value) {
-          maxAttempts = lockoutData.value.failedAttempts || 0;
-          existingEndTime = lockoutData.value.endTime || 0;
-        }
-
-        maxAttempts = Math.max(maxAttempts, localAttempts);
-
-        const currentTime = Date.now();
-        if (existingEndTime > currentTime) {
+        const verdict = await checkPwdLockout(accountId);
+        if (verdict.locked && verdict.reason === 'time_lockout') {
           setIsLockedOut(true);
-          setLockoutEndTime(existingEndTime);
-          setFailedAttempts(maxAttempts);
-        } else {
-          setFailedAttempts(maxAttempts);
+          setLockoutEndTime(Date.now() + verdict.retryAfter);
         }
-      } catch { }
+        const state = await getPwdLockoutState(accountId);
+        setFailedAttempts(state.failedAttempts);
+      } catch {
+        // A lockout-engine failure must not block presenting the unlock
+        // form; the engine writes still take effect on the next attempt.
+      }
     };
 
     checkLockoutStatus();
@@ -135,12 +75,10 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
         const currentTime = Date.now();
         setNow(currentTime);
         if (currentTime >= lockoutEndTime) {
+          // The lockout engine owns persistence; expiry here is purely a
+          // countdown display state — the next attempt re-checks the engine.
           setIsLockedOut(false);
           setLockoutEndTime(null);
-          db.settings.put({
-            key: 'lockoutData:' + accountId,
-            value: { endTime: 0, failedAttempts }
-          }).catch(() => {});
         }
       }, 1000);
     }
@@ -170,65 +108,69 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
       return;
     }
 
+    // Pre-attempt gate: lockout tiers, session cap, and escalated PBKDF2.
+    const gate = await checkPwdLockout(accountId);
+    if (gate.locked) {
+      if (gate.reason === 'session_limit') {
+        setError(t('lock.errors.tooManyAttempts'));
+      } else {
+        setIsLockedOut(true);
+        setLockoutEndTime(Date.now() + gate.retryAfter);
+        setError(t('lock.errors.tooManyAttempts'));
+      }
+      return;
+    }
+
+    const preState = await getPwdLockoutState(accountId);
+
+    // Repeated failures must cost real work: proof-of-work from the 10th
+    // attempt in the session, same escalating difficulty as backup restore.
+    const pow = getPoWChallenge(accountId, preState.failedAttempts);
+    if (pow) {
+      setIsUnlocking(true);
+      try {
+        await computeProofOfWork(pow.challenge, pow.difficulty);
+      } catch {
+        setError(t('lock.errors.unlockFailed'));
+        setIsUnlocking(false);
+        return;
+      }
+      setIsUnlocking(false);
+    }
+
     try {
       const passwordSet = await db.settings.get('passwordSet:' + accountId);
 
       if (passwordSet) {
-        const salt = await db.settings.get('salt:' + accountId);
-        if (!salt) {
-          setError(t('lock.errors.corrupted'));
-          return;
-        }
+        // Verification always derives at the vault's stored iteration count —
+        // escalation here would break legitimate unlocks (the stored token
+        // can only be decrypted by the exact key). Attackers pay through
+        // the tier lockouts, session cap, and PoW above instead.
+        const attempt = await unlockAttempt(accountId, password);
 
-        const saltArray = new Uint8Array(Object.values(salt.value));
-
-        const token = await db.settings.get('verificationToken:' + accountId);
-        if (!token) {
-          setTokenMissing(true);
-          setError(t('lock.errors.tokenMissing'));
-          return;
-        }
-
-        const iterVersion = await db.settings.get('pbkdf2Version:' + accountId).catch(() => null);
-        const storedIterations = iterVersion?.value || 200000;
-        const key = await deriveKey(password, saltArray, storedIterations);
-
-        const isValid = await verifyPassword(key, token.value);
-
-        if (isValid) {
-          setFailedAttempts(0);
-          clearLocalAttempts(accountId);
-          await db.settings.put({
-            key: 'lockoutData:' + accountId,
-            value: { endTime: 0, failedAttempts: 0 }
-          }).catch(() => {});
-          setSessionKey(key, accountId);
+        if (attempt.isValid) {
+          await recordPwdSuccessfulAttempt(accountId);
+          setSessionKey(attempt.key, accountId);
           setPassword('');
           setIsUnlocking(true);
 
-          if (storedIterations < PBKDF2_ITERATIONS) {
-            upgradePbkdf2Iterations(accountId, password).catch(() => {});
+          if (attempt.storedIterations < PBKDF2_ITERATIONS) {
+            // Old vaults upgrade to the current standard on unlock; the
+            // rekey aborts (never partially applies) if any row is corrupt.
+            upgradePbkdf2(accountId, attempt.key, password).catch(() => {
+              // A failed upgrade leaves the vault on the old iterations —
+              // still fully usable, upgraded on a later session.
+            });
           }
 
           setTimeout(() => onUnlock(), 500);
         } else {
-          const newFailedAttempts = failedAttempts + 1;
-          setFailedAttempts(newFailedAttempts);
-          setLocalAttempts(accountId, newFailedAttempts);
+          await recordPwdFailedAttempt(accountId);
+          const newState = await getPwdLockoutState(accountId);
 
-          const lockoutDuration = getLockoutDuration(newFailedAttempts);
-          const lockoutValue = {
-            endTime: lockoutDuration > 0 ? Date.now() + lockoutDuration : 0,
-            failedAttempts: newFailedAttempts
-          };
-          await db.settings.put({
-            key: 'lockoutData:' + accountId,
-            value: lockoutValue
-          }).catch(() => {});
-
-          if (lockoutDuration > 0) {
+          if (newState.lockoutUntil > Date.now()) {
             setIsLockedOut(true);
-            setLockoutEndTime(lockoutValue.endTime);
+            setLockoutEndTime(newState.lockoutUntil);
             setError(t('lock.errors.tooManyAttempts'));
           } else {
             setError(t('lock.errors.invalid'));
@@ -236,21 +178,22 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
           setPassword('');
         }
       } else {
-        const salt = generateSalt();
-        await db.settings.put({ key: 'salt:' + accountId, value: Array.from(salt) });
-
-        const key = await deriveKey(password, salt);
-        const token = await createVerificationToken(key);
-        await db.settings.put({ key: 'verificationToken:' + accountId, value: token });
-        await db.settings.put({ key: 'passwordSet:' + accountId, value: true });
-        await db.settings.put({ key: 'pbkdf2Version:' + accountId, value: PBKDF2_ITERATIONS });
-
-        setSessionKey(key, accountId);
+        // First-time setup: derive fresh salt + token at the current standard.
+        await setupPassword(accountId, password);
         setPassword('');
         setIsUnlocking(true);
         setTimeout(() => onUnlock(), 500);
       }
-    } catch {
+    } catch (err) {
+      if (err?.message === 'TOKEN_MISSING') {
+        setTokenMissing(true);
+        setError(t('lock.errors.tokenMissing'));
+        return;
+      }
+      if (err?.message === 'CORRUPTED') {
+        setError(t('lock.errors.corrupted'));
+        return;
+      }
       setError(t('lock.errors.unlockFailed'));
       setPassword('');
     }
@@ -278,7 +221,7 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
       await db.settings.delete('verificationToken:' + accountId);
       await db.settings.delete('passwordSet:' + accountId);
       await db.settings.delete('lockoutData:' + accountId);
-      clearLocalAttempts(accountId);
+      await recordPwdSuccessfulAttempt(accountId); // also clears legacy stores
       setTokenMissing(false);
       setError('');
       setFailedAttempts(0);

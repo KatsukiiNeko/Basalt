@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { deriveKey, generateSalt, setSessionKey, createVerificationToken, verifyPassword, encryptTransactionForStorage, decryptTransactionFromStorage, getActiveAccountId, PBKDF2_ITERATIONS } from '../crypto/crypto';
-import { db } from '../db/db';
+import { getActiveAccountId } from '../crypto/crypto';
+import { changePassword } from '../services/auth';
 import { useLanguage } from '../context/LanguageContext';
 import {
   checkPwdLockout,
@@ -78,62 +78,25 @@ const PasswordManager = ({ onPasswordChange }) => {
     try {
       setIsLoading(true);
 
-      const salt = await db.settings.get('salt:' + accountId);
-      const token = await db.settings.get('verificationToken:' + accountId);
-      if (!salt || !token) {
-        setError(t('password.errors.notSet'));
-        setIsLoading(false);
-        return;
-      }
-
-      const saltArray = new Uint8Array(Object.values(salt.value));
-      const oldKey = await deriveKey(currentPassword, saltArray);
-      const isValid = await verifyPassword(oldKey, token.value);
-
-      if (!isValid) {
-        await recordPwdFailedAttempt(accountId);
-        const newLockout = await checkPwdLockout(accountId);
-        if (newLockout.locked && newLockout.reason === 'time_lockout') {
-          setLockoutTimer(Math.ceil(newLockout.retryAfter / 1000));
+      try {
+        // Shared rekey routine (services/auth). Unlike the pre-V2 inline copy
+        // it aborts on the first undecryptable row instead of destroying the
+        // vault on corruption.
+        await changePassword(accountId, currentPassword, newPassword);
+      } catch (err) {
+        if (err?.message === 'WRONG_PASSWORD') {
+          await recordPwdFailedAttempt(accountId);
+          const newLockout = await checkPwdLockout(accountId);
+          if (newLockout.locked && newLockout.reason === 'time_lockout') {
+            setLockoutTimer(Math.ceil(newLockout.retryAfter / 1000));
+          }
+          setError(t('password.errors.incorrect'));
+          setIsLoading(false);
+          return;
         }
-        setError(t('password.errors.incorrect'));
-        setIsLoading(false);
-        return;
+        throw err;
       }
 
-      const allEncrypted = await db.transactions.where('accountId').equals(accountId).toArray();
-      const decryptedTransactions = [];
-      for (const enc of allEncrypted) {
-        try {
-          const tx = await decryptTransactionFromStorage(enc, oldKey);
-          decryptedTransactions.push(tx);
-        } catch {
-          throw new Error(t('password.errors.decryptFailed'));
-        }
-      }
-
-      const newSalt = generateSalt();
-      const newKey = await deriveKey(newPassword, newSalt);
-
-      const reEncrypted = [];
-      for (const tx of decryptedTransactions) {
-        const encrypted = await encryptTransactionForStorage(tx, newKey);
-        encrypted.accountId = accountId;
-        reEncrypted.push(encrypted);
-      }
-
-      const newToken = await createVerificationToken(newKey);
-
-      await db.transaction('rw', db.transactions, db.settings, async () => {
-        await db.transactions.where('accountId').equals(accountId).delete();
-        await db.transactions.bulkAdd(reEncrypted);
-        await db.settings.put({ key: 'salt:' + accountId, value: Array.from(newSalt) });
-        await db.settings.put({ key: 'verificationToken:' + accountId, value: newToken });
-        await db.settings.put({ key: 'passwordSet:' + accountId, value: true });
-        await db.settings.put({ key: 'pbkdf2Version:' + accountId, value: PBKDF2_ITERATIONS });
-      });
-
-      setSessionKey(newKey, accountId);
       await recordPwdSuccessfulAttempt(accountId);
       setSuccess(t('password.success.changed'));
       setCurrentPassword('');
@@ -141,7 +104,11 @@ const PasswordManager = ({ onPasswordChange }) => {
       setConfirmPassword('');
       if (onPasswordChange) onPasswordChange();
     } catch (err) {
-      setError(err.message || t('password.errors.changeFailed'));
+      if (err?.message === 'TOKEN_MISSING' || err?.message === 'CORRUPTED') {
+        setError(t('password.errors.decryptFailed'));
+      } else {
+        setError(t('password.errors.changeFailed'));
+      }
     } finally {
       setIsLoading(false);
     }

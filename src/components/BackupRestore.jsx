@@ -42,7 +42,10 @@ const BackupRestore = ({ onBackup, onSecureBackup, onRestore, onSecureRestore })
           if (lockout.locked && lockout.reason === 'time_lockout') {
             setLockoutTimer(Math.ceil(lockout.retryAfter / 1000));
           }
-        } catch { }
+        } catch {
+          // If the fingerprint/lockout read fails we still show the restore
+          // form; the submit path re-checks the lockout engine anyway.
+        }
       };
       initLockout();
     }

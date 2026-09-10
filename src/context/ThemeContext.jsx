@@ -1,3 +1,6 @@
+// Theme context. Standard provider+hook module; the react-refresh export
+// restriction is intentionally waived (hook and provider belong together).
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 const ThemeContext = createContext();
@@ -27,7 +30,10 @@ export const ThemeProvider = ({ children }) => {
   useEffect(() => {
     try {
       localStorage.setItem(THEME_KEY, theme);
-    } catch { }
+    } catch {
+      // Storage unavailable (private mode): the theme still applies for
+      // this session via the data-theme attribute set during render.
+    }
   }, [theme]);
 
   useEffect(() => {

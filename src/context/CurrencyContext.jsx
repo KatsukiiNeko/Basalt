@@ -1,3 +1,6 @@
+// Standard provider+hook context module; the react-refresh export
+// restriction is intentionally waived (hook and provider belong together).
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState } from 'react';
 import { formatMoney } from '../utils/currency';
 

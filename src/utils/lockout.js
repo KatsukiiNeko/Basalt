@@ -26,35 +26,41 @@ const LOCKOUT_TIERS = [
 
 function readLocalStorage() {
   try { return JSON.parse(localStorage.getItem(BACKUP_LOCKOUT_LS_KEY) || '{}'); }
+  // An unreadable mirror degrades to empty — the other two stores still
+  // hold the lockout state, which is the whole point of triple-mirroring.
   catch { return {}; }
 }
 
 function writeLocalStorage(store) {
   try { localStorage.setItem(BACKUP_LOCKOUT_LS_KEY, JSON.stringify(store)); }
-  catch { }
+  // A failed mirror write cannot be surfaced to an attacker; the IDB and
+  // session mirrors still gate the next attempt.
+  catch { /* one mirror down, two remain */ }
 }
 
 function readSessionStorage() {
   try { return JSON.parse(sessionStorage.getItem(BACKUP_LOCKOUT_SS_KEY) || '{}'); }
-  catch { return {}; }
+  catch { return {}; /* degraded mirror = empty, others hold state */ }
 }
 
 function writeSessionStorage(store) {
   try { sessionStorage.setItem(BACKUP_LOCKOUT_SS_KEY, JSON.stringify(store)); }
-  catch { }
+  // One mirror failing is tolerated; the other two still gate the next try.
+  catch { /* mirror write failed */ }
 }
 
 async function readIDB(fingerprint) {
   try {
     const record = await db.settings.get(IDB_KEY_PREFIX + fingerprint);
     return record?.value || null;
-  } catch { return null; }
+  } catch { return null; /* degraded mirror, others hold state */ }
 }
 
 async function writeIDB(fingerprint, state) {
   try {
     await db.settings.put({ key: IDB_KEY_PREFIX + fingerprint, value: state });
-  } catch { }
+  // Same mirror-tolerance policy as writeSessionStorage above.
+  } catch { /* mirror write failed */ }
 }
 
 export async function computeBackupFingerprint(backup) {
@@ -248,30 +254,30 @@ function readPwdLocalStorage() {
 
 function writePwdLocalStorage(store) {
   try { localStorage.setItem(PWD_LOCKOUT_LS_KEY, JSON.stringify(store)); }
-  catch { }
+  catch { /* mirror write failed; other mirrors still gate attempts */ }
 }
 
 function readPwdSessionStorage() {
   try { return JSON.parse(sessionStorage.getItem(PWD_LOCKOUT_SS_KEY) || '{}'); }
-  catch { return {}; }
+  catch { return {}; /* degraded mirror = empty, others hold state */ }
 }
 
 function writePwdSessionStorage(store) {
   try { sessionStorage.setItem(PWD_LOCKOUT_SS_KEY, JSON.stringify(store)); }
-  catch { }
+  catch { /* mirror write failed; other mirrors still gate attempts */ }
 }
 
 async function readPwdIDB(accountId) {
   try {
     const record = await db.settings.get(PWD_IDB_PREFIX + accountId);
     return record?.value || null;
-  } catch { return null; }
+  } catch { return null; /* degraded mirror, others hold state */ }
 }
 
 async function writePwdIDB(accountId, state) {
   try {
     await db.settings.put({ key: PWD_IDB_PREFIX + accountId, value: state });
-  } catch { }
+  } catch { /* mirror write failed; other mirrors still gate attempts */ }
 }
 
 export async function getPwdLockoutState(accountId) {
@@ -290,12 +296,57 @@ export async function getPwdLockoutState(accountId) {
     lsState?.lockoutUntil ?? 0
   );
 
+  // Fold in the pre-V2 inline unlock system ('mv_cumulative_attempts' in
+  // localStorage + 'lockoutData:<id>' in IDB) so a returning user's
+  // accumulated failures gate their FIRST V2 unlock attempt, not only
+  // later ones. Take the max, never reset. Legacy keys are removed by
+  // recordPwdSuccessfulAttempt / recordPwdFailedAttempt writes.
+  const legacy = await readLegacyUnlockState(accountId);
+
   return {
-    failedAttempts: maxAttempts,
-    lockoutUntil: maxLockoutUntil,
+    failedAttempts: Math.max(maxAttempts, legacy.failedAttempts),
+    lockoutUntil: Math.max(maxLockoutUntil, legacy.lockoutUntil),
     sessionAttempts: ssState?.attempts ?? 0,
   };
 }
+
+// Pre-V2 LockScreen tracked unlock failures in its own two stores with its
+// own (weaker) tier table. V2 reads them once per state check until the
+// first successful unlock clears the keys for good.
+async function readLegacyUnlockState(accountId) {
+  let failedAttempts = 0;
+  let lockoutUntil = 0;
+
+  try {
+    const legacyLs = JSON.parse(localStorage.getItem('mv_cumulative_attempts') || '{}');
+    failedAttempts = Math.max(failedAttempts, legacyLs[accountId]?.attempts ?? 0);
+  } catch {
+    // Unreadable legacy state is treated as empty — it can only make the
+    // account MORE protected, and a parse failure must not break unlocks.
+  }
+
+  try {
+    const legacyIdb = await db.settings.get('lockoutData:' + accountId);
+    failedAttempts = Math.max(failedAttempts, legacyIdb?.value?.failedAttempts ?? 0);
+    lockoutUntil = Math.max(lockoutUntil, legacyIdb?.value?.endTime ?? 0);
+  } catch {
+    // Same policy as above.
+  }
+
+  return { failedAttempts, lockoutUntil };
+}
+
+async function clearLegacyUnlockState(accountId) {
+  try {
+    const legacyLs = JSON.parse(localStorage.getItem('mv_cumulative_attempts') || '{}');
+    delete legacyLs[accountId];
+    localStorage.setItem('mv_cumulative_attempts', JSON.stringify(legacyLs));
+  } catch { /* best-effort; unreadable legacy state is already inert */ }
+  try {
+    await db.settings.delete('lockoutData:' + accountId);
+  } catch { /* same */ }
+}
+
 
 export async function checkPwdLockout(accountId) {
   const state = await getPwdLockoutState(accountId);
@@ -344,6 +395,10 @@ export async function recordPwdFailedAttempt(accountId) {
   lsStore[accountId] = newState;
   writePwdLocalStorage(lsStore);
 
+  // The merged count is now authoritative in the pwd-lockout stores; drop
+  // the legacy keys so future reads don't keep re-counting them.
+  await clearLegacyUnlockState(accountId);
+
   const ssStore = readPwdSessionStorage();
   ssStore[accountId] = {
     attempts: newSessionAttempts,
@@ -371,4 +426,8 @@ export async function recordPwdSuccessfulAttempt(accountId) {
   const ssStore = readPwdSessionStorage();
   delete ssStore[accountId];
   writePwdSessionStorage(ssStore);
+
+  // Success means the verified user is back — legacy and new state both
+  // reset so the merge in getPwdLockoutState stops finding old counters.
+  await clearLegacyUnlockState(accountId);
 }

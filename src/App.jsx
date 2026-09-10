@@ -20,7 +20,11 @@ function App() {
     const checkAccounts = async () => {
       try {
         await db.accounts.toArray();
-      } catch { }
+      } catch {
+        // If IndexedDB itself is unavailable (rare: private mode with
+        // storage full/blocked), fall through to the account screen; each
+        // flow surfaces its own actionable error on first DB use.
+      }
       setIsLoading(false);
     };
     checkAccounts();

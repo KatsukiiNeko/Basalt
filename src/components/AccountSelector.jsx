@@ -30,7 +30,19 @@ const AccountSelector = ({ onAccountSelected }) => {
   };
 
   useEffect(() => {
-    loadAccounts();
+    let cancelled = false;
+    (async () => {
+      try {
+        const all = await db.accounts.toArray();
+        if (!cancelled) setAccounts(all);
+      } catch {
+        // IndexedDB unavailable — presenting the empty selector keeps the
+        // create-account flow reachable, which will surface the real error.
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const handleCreate = async (e) => {

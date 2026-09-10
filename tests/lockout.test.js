@@ -282,3 +282,74 @@ describe('password lockout system (per-accountId)', () => {
     expect(verdict.reason).toBe('session_limit');
   });
 });
+
+describe('pwd lockout: legacy unlock-state merge (pre-V2 LockScreen)', () => {
+  // V2's LockScreen reads the same pwd-lockout engine as backup restore.
+  // Returning users carry attempt history in the OLD inline stores
+  // ('mv_cumulative_attempts' in localStorage, 'lockoutData:<id>' in IDB).
+  // The merge must take the max and clear legacy keys — never reset history.
+
+  it('folds legacy localStorage attempts into the first V2 read', async () => {
+    localStorage.setItem('mv_cumulative_attempts', JSON.stringify({
+      [ACCT]: { attempts: 4, lastAttempt: Date.now() },
+    }));
+
+    const state = await getPwdLockoutState(ACCT);
+    expect(state.failedAttempts).toBe(4);
+  });
+
+  it('folds legacy IDB lockout expiry into the first V2 read', async () => {
+    const endTime = Date.now() + 60_000;
+    await db.settings.put({
+      key: 'lockoutData:' + ACCT,
+      value: { endTime, failedAttempts: 3 },
+    });
+
+    const state = await getPwdLockoutState(ACCT);
+    expect(state.failedAttempts).toBe(3);
+    expect(state.lockoutUntil).toBeGreaterThanOrEqual(endTime);
+  });
+
+  it('takes the max across all stores rather than resetting', async () => {
+    localStorage.setItem('mv_cumulative_attempts', JSON.stringify({
+      [ACCT]: { attempts: 2, lastAttempt: Date.now() },
+    }));
+    await db.settings.put({
+      key: 'lockoutData:' + ACCT,
+      value: { endTime: 0, failedAttempts: 6 },
+    });
+    // New-system count: seed one failure, then read.
+    await recordPwdFailedAttempt(ACCT); // reads legacy(6) -> writes 7, clears legacy
+
+    const state = await getPwdLockoutState(ACCT);
+    expect(state.failedAttempts).toBe(7);
+
+    // Legacy keys are gone after the failure write — no double counting.
+    const legacyLs = JSON.parse(localStorage.getItem('mv_cumulative_attempts') || '{}');
+    expect(legacyLs[ACCT]).toBeUndefined();
+    expect(await db.settings.get('lockoutData:' + ACCT)).toBeUndefined();
+  });
+
+  it('successful unlock clears both legacy stores and the new state', async () => {
+    localStorage.setItem('mv_cumulative_attempts', JSON.stringify({
+      [ACCT]: { attempts: 9, lastAttempt: Date.now() },
+    }));
+    await db.settings.put({
+      key: 'lockoutData:' + ACCT,
+      value: { endTime: Date.now() + 30_000, failedAttempts: 9 },
+    });
+
+    await recordPwdSuccessfulAttempt(ACCT);
+
+    expect((await getPwdLockoutState(ACCT)).failedAttempts).toBe(0);
+    const legacyLs = JSON.parse(localStorage.getItem('mv_cumulative_attempts') || '{}');
+    expect(legacyLs[ACCT]).toBeUndefined();
+    expect(await db.settings.get('lockoutData:' + ACCT)).toBeUndefined();
+  });
+
+  it('corrupted legacy JSON is ignored, not fatal', async () => {
+    localStorage.setItem('mv_cumulative_attempts', '{not-json');
+    const state = await getPwdLockoutState(ACCT);
+    expect(state.failedAttempts).toBeGreaterThanOrEqual(0);
+  });
+});
