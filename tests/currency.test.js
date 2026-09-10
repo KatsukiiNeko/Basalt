@@ -32,10 +32,12 @@ describe('formatMoney — USD', () => {
 });
 
 describe('formatMoney — VND scaled mode (legacy thousand-unit storage)', () => {
-  it('multiplies stored thousands up for display', () => {
-    // Stored "50" (thousand-VND) displays as 50.000 VND.
-    expect(formatMoney(50, 'VND', 'scaled')).toBe('50.000 VND');
-    expect(formatMoney(1250, 'VND', 'scaled')).toBe('1.250.000 VND');
+  it('renders the stored thousands with an explicit K marker', () => {
+    // Stored "50" (thousand-VND) displays as 50K VND. The K marker is
+    // load-bearing: without it, "50.000 VND" reads as plain đồng and
+    // recreates the unit confusion the display-mode choice exists to fix.
+    expect(formatMoney(50, 'VND', 'scaled')).toBe('50K VND');
+    expect(formatMoney(1250, 'VND', 'scaled')).toBe('1.250K VND');
   });
 });
 
@@ -56,7 +58,8 @@ describe('formatMoney — DR-0003 invariant (display-only scaling)', () => {
 
     expect(stored).toBe(snapshot); // untouched
     // One stored number, two legitimate presentations — never two storages.
-    expect(formatMoney(stored, 'VND', 'scaled')).toBe('1.250.000 VND');
+    // Scaled states its unit ("thousands") explicitly; exact shows full đồng.
+    expect(formatMoney(stored, 'VND', 'scaled')).toBe('1.250K VND');
     expect(formatMoney(stored, 'VND', 'exact')).toBe('1.250 VND');
   });
 });

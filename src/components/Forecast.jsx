@@ -169,7 +169,7 @@ const Forecast = ({ currentBalance = 0, selectedMonth, selectedYear, transaction
             ) : (
               <div className="forecast-item">
                 <span className="label">{t('forecast.spendingPace')}</span>
-                <span className="value forecast-na">{t('forecast.noBaselineData') || 'No baseline data'}</span>
+                <span className="value forecast-na">{t('forecast.noBaselineData')}</span>
               </div>
             )}
           </>

@@ -12,15 +12,21 @@ const LANG_STORAGE_KEY = 'basalt-lang';
 
 export const LanguageProvider = ({ children }) => {
   const [language, setLanguageState] = useState(() => {
+    // Mirror the active language onto <html lang> during render (before
+    // children mount) so assistive tech never hears a mismatched locale.
+    let initial;
     try {
-      return localStorage.getItem(LANG_STORAGE_KEY) || 'EN';
+      initial = localStorage.getItem(LANG_STORAGE_KEY) || 'EN';
     } catch {
-      return 'EN';
+      initial = 'EN';
     }
+    document.documentElement.setAttribute('lang', initial.toLowerCase());
+    return initial;
   });
 
   const setLanguage = useCallback((next) => {
     setLanguageState(next);
+    document.documentElement.setAttribute('lang', next.toLowerCase());
     try {
       localStorage.setItem(LANG_STORAGE_KEY, next);
     } catch {

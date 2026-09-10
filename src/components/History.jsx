@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { updateTransaction, deleteTransaction } from '../services/transactions';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
-import { categoryValueToKey } from '../i18n/translations';
+import { categoryValueToKey, languageLocale } from '../i18n/translations';
 
 const CATEGORY_TYPE_MAP = {
   'Salary': 'income',
@@ -182,8 +182,7 @@ const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction 
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    const locale = language === 'EN' ? 'en-US' : 'vi-VN';
-    return date.toLocaleDateString(locale, {
+    return date.toLocaleDateString(languageLocale[language] || 'en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'

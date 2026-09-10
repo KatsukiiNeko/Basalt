@@ -10,6 +10,7 @@ import {
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import { aggregateExpensesByCategory, getTopCategories, aggregateMonthlyTrend } from '../utils/chartData';
+import { languageLocale } from '../i18n/translations';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
@@ -82,14 +83,11 @@ function useThemeColors() {
   return useMemo(() => getThemeColors(), [theme]);
 }
 
-/** Locale per app language — ECharts canvas can't resolve Intl itself */
-const MONTH_LOCALES = { EN: 'en-US', VI: 'vi-VN' };
-
-/** Format month keys "YYYY-MM" → localized short month + year ("Jan 2025" / "thg 1 2025") */
+/** Format month keys "YYYY-MM" → localized short month + year; locale comes
+ *  from the shared i18n map so all languages stay in one place. */
 function formatMonthLabel(ym, language = 'EN') {
   const [y, m] = ym.split('-');
-  const locale = MONTH_LOCALES[language] || 'en-US';
-  return new Intl.DateTimeFormat(locale, { month: 'short', year: 'numeric' })
+  return new Intl.DateTimeFormat(languageLocale[language] || 'en-US', { month: 'short', year: 'numeric' })
     .format(new Date(Number(y), Number(m) - 1, 1));
 }
 
@@ -106,7 +104,6 @@ function useECharts(option, containerRef, onReady) {
     if (!containerRef.current) return;
 
     chartRef.current = echarts.init(containerRef.current, null, { renderer: 'canvas' });
-    if (onReady) onReady(chartRef.current);
 
     const handleResize = () => {
       chartRef.current?.resize();
@@ -136,6 +133,16 @@ function useECharts(option, containerRef, onReady) {
       chartRef.current.setOption(option, { notMerge: true });
     }
   }, [option]);
+
+  // Event handlers live in consumer closures (useCallback over data), so they
+  // must be re-bound when the consumer identity changes — instance reuse
+  // alone would leave the doughnut's hover/click handlers reading stale
+  // category data. off() first: ECharts stacks listeners, never replaces.
+  useEffect(() => {
+    if (!onReady || !chartRef.current) return;
+    chartRef.current.off();
+    onReady(chartRef.current);
+  }, [onReady]);
 }
 
 // ===========================================================================
@@ -153,7 +160,7 @@ export function SpendingDoughnut({ categories, formatCurrency, t }) {
 
   // Resolve theme colours once at mount time
   const colors = useThemeColors();
-  const totalExpensesLabel = t?.('dashboard.totalExpenses') || 'Total Expenses';
+  const totalExpensesLabel = t('dashboard.totalExpenses');
   const total = useMemo(() => categories?.reduce((s, c) => s + c.total, 0) || 0, [categories]);
 
   const option = useMemo(() => {
@@ -195,7 +202,7 @@ export function SpendingDoughnut({ categories, formatCurrency, t }) {
       },
       series: [
         {
-          name: t?.('dashboard.expenses') || 'Expenses',
+          name: t('dashboard.expenses'),
           type: 'pie',
           radius: ['52%', '78%'],
           center: ['50%', '46%'],
@@ -281,7 +288,7 @@ export function SpendingDoughnut({ categories, formatCurrency, t }) {
   if (!option) {
     return (
       <div className="chart-empty">
-        <span className="chart-empty-text">{t?.('empty.transactions.title') || 'No expense data yet'}</span>
+        <span className="chart-empty-text">{t('empty.transactions.title')}</span>
       </div>
     );
   }
@@ -370,7 +377,7 @@ export function TopCategoriesBar({ categories, totalExpenses, formatCurrency, t 
         formatter(params) {
           const d = params[0];
           const pct = totalExpenses > 0 ? ((d.value / totalExpenses) * 100).toFixed(1) : '0.0';
-          return `<strong>${d.name}</strong><br/>${formatCurrency(d.value)}<br/>${pct}% ${t?.('dashboard.ofTotal') || 'of total'}`;
+          return `<strong>${d.name}</strong><br/>${formatCurrency(d.value)}<br/>${pct}% ${t('dashboard.ofTotal')}`;
         },
       },
       grid: {
@@ -398,7 +405,7 @@ export function TopCategoriesBar({ categories, totalExpenses, formatCurrency, t 
       },
       series: [
         {
-          name: t?.('dashboard.expenses') || 'Expenses',
+          name: t('dashboard.expenses'),
           type: 'bar',
           data: values.map((v, i) => ({
             value: v,
@@ -435,7 +442,7 @@ export function TopCategoriesBar({ categories, totalExpenses, formatCurrency, t 
   if (!option) {
     return (
       <div className="chart-empty">
-        <span className="chart-empty-text">{t?.('empty.transactions.title') || 'No expense data yet'}</span>
+        <span className="chart-empty-text">{t('empty.transactions.title')}</span>
       </div>
     );
   }
@@ -459,9 +466,9 @@ export function MonthlyTrendLine({ months, income, expense, net, formatCurrency,
   const option = useMemo(() => {
     if (!months || months.length === 0) return null;
 
-    const incomeName  = t?.('dashboard.income')   || 'Income';
-    const expenseName = t?.('dashboard.expenses') || 'Expenses';
-    const netName     = t?.('dashboard.net')      || 'Net';
+    const incomeName  = t('dashboard.income');
+    const expenseName = t('dashboard.expenses');
+    const netName     = t('dashboard.net');
 
     return {
       textStyle: chartBaseTextStyle,
@@ -600,7 +607,7 @@ export function MonthlyTrendLine({ months, income, expense, net, formatCurrency,
   if (!option) {
     return (
       <div className="chart-empty">
-        <span className="chart-empty-text">{t?.('empty.forecast.title') || 'Not enough data'}</span>
+        <span className="chart-empty-text">{t('empty.forecast.title')}</span>
       </div>
     );
   }

@@ -1,10 +1,10 @@
 import { useLanguage } from '../context/LanguageContext';
 
 const LanguageToggle = () => {
-  const { language, toggleLanguage } = useLanguage();
+  const { language, toggleLanguage, t } = useLanguage();
 
   return (
-    <button className="currency-toggle" onClick={toggleLanguage} title={`Switch to ${language === 'EN' ? 'Vietnamese' : 'English'}`}>
+    <button className="currency-toggle" onClick={toggleLanguage} title={t('toggle.switchLanguage')} aria-label={t('toggle.switchLanguage')}>
       <span className={`flag-option ${language === 'EN' ? 'active' : ''}`}>
         <svg viewBox="0 0 22 16" className="flag-icon">
           <defs>

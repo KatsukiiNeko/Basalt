@@ -1,20 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 
-const MONTH_NAMES_EN = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-];
-
-const MONTH_NAMES_VI = [
-  'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
-  'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
+const MONTH_KEYS = [
+  'january', 'february', 'march', 'april', 'may', 'june',
+  'july', 'august', 'september', 'october', 'november', 'december'
 ];
 
 const MonthPicker = ({ selectedMonth, selectedYear, onChange, monthData }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [toast, setToast] = useState(null);
-  const { language, t } = useLanguage();
+  const { t } = useLanguage();
   const dropdownRef = useRef(null);
 
   const now = new Date();
@@ -22,8 +17,6 @@ const MonthPicker = ({ selectedMonth, selectedYear, onChange, monthData }) => {
   const currentYear = now.getFullYear();
 
   const isCurrentMonth = selectedMonth === currentMonth && selectedYear === currentYear;
-
-  const monthNames = language === 'EN' ? MONTH_NAMES_EN : MONTH_NAMES_VI;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -102,7 +95,7 @@ const MonthPicker = ({ selectedMonth, selectedYear, onChange, monthData }) => {
         <button
           className="month-picker-arrow"
           onClick={goPrev}
-          aria-label="Previous month"
+          aria-label={t('toggle.previousMonth')}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
@@ -113,13 +106,13 @@ const MonthPicker = ({ selectedMonth, selectedYear, onChange, monthData }) => {
           className="month-picker-label"
           onClick={() => setShowDropdown(!showDropdown)}
         >
-          {monthNames[selectedMonth]}, {selectedYear}
+          {t('month.' + MONTH_KEYS[selectedMonth])}, {selectedYear}
         </button>
 
         <button
           className={`month-picker-arrow ${isCurrentMonth ? 'disabled' : ''}`}
           onClick={goNext}
-          aria-label="Next month"
+          aria-label={t('toggle.nextMonth')}
           disabled={isCurrentMonth}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -147,13 +140,15 @@ const MonthPicker = ({ selectedMonth, selectedYear, onChange, monthData }) => {
               </button>
             </div>
             <div className="month-picker-grid">
-              {monthNames.map((name, i) => (
+              {MONTH_KEYS.map((key, i) => (
                 <button
-                  key={i}
+                  key={key}
                   className={getMonthClass(i)}
                   onClick={() => selectMonth(i)}
+                  title={t('month.' + key)}
+                  aria-label={t('month.' + key)}
                 >
-                  {language === 'EN' ? name.slice(0, 3) : `Th${i + 1}`}
+                  {t('month.short.' + key)}
                 </button>
               ))}
             </div>

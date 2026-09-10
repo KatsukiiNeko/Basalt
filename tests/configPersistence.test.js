@@ -58,8 +58,8 @@ describe('persisted config drives formatting consistently', () => {
 
     const view = (cur, mode) => formatMoney(stored, cur, mode);
 
-    // VND scaled: stored value IS thousands of dong.
-    expect(view('VND', 'scaled')).toBe('1.250.000 VND');
+    // VND scaled: stored value IS thousands of dong, stated explicitly.
+    expect(view('VND', 'scaled')).toBe('1.250K VND');
     // VND exact: stored value IS dong.
     expect(view('VND', 'exact')).toBe('1.250 VND');
     // USD ignores vnd-mode entirely.
@@ -87,4 +87,44 @@ describe('amountHint translation keys resolve in every language', () => {
   it('the legacy singular amountHint key no longer exists (replaced by pair)', () => {
     expect(translations['form.amountHint']).toBeUndefined();
   });
+
+// V2 i18n layer: every user-facing key added by the currency settings and
+// the month picker must resolve in BOTH languages. t() leaks the raw key
+// when a translation is missing; this suite pins the whole surface so a
+// raw key can never ship in either language.
+describe('V2 translation surface completeness', () => {
+  const REQUIRED_KEYS = [
+    'settings.currencySection', 'settings.currencyHelp', 'settings.displayFormat',
+    'settings.vndFull', 'settings.vndFullDesc', 'settings.vndThousands',
+    'settings.vndThousandsDesc', 'settings.liveExampleLabel', 'settings.usdDesc',
+    'month.january', 'month.december', 'month.short.january', 'month.short.december',
+    'toggle.previousMonth', 'toggle.nextMonth', 'toggle.switchLanguage',
+    'toggle.switchTheme', 'toggle.back',
+  ];
+
+  it.each(REQUIRED_KEYS)('%s resolves in en and vi without leaking the key', (key) => {
+    expect(translations[key]).toBeDefined();
+    expect(translations[key].en).toBeTruthy();
+    expect(translations[key].vi).toBeTruthy();
+    expect(translations[key].en).not.toBe(key);
+  });
+
+  it('every month has full and short names in both languages', () => {
+    const MONTHS = ['january','february','march','april','may','june',
+                    'july','august','september','october','november','december'];
+    for (const m of MONTHS) {
+      expect(translations['month.' + m]).toBeDefined();
+      expect(translations['month.short.' + m]).toBeDefined();
+      expect(translations['month.' + m].en).toBeTruthy();
+      expect(translations['month.' + m].vi).toBeTruthy();
+    }
+  });
+
+  it('languageLocale maps every supported language code', async () => {
+    const { languageLocale } = await import('../src/i18n/translations');
+    expect(languageLocale.EN).toBe('en-US');
+    expect(languageLocale.VI).toBe('vi-VN');
+  });
+});
+
 });

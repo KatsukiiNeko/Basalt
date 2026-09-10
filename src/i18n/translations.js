@@ -810,6 +810,92 @@ export const translations = {
     en: 'Currency',
     vi: 'Đơn vị tiền'
   },
+  'settings.currencySection': {
+    en: 'Currency & Display',
+    vi: 'Tiền tệ & Hiển thị'
+  },
+  'settings.currencyHelp': {
+    en: 'Controls how amounts are shown everywhere. Stored values never change.',
+    vi: 'Kiểm soát cách hiển thị số tiền ở mọi nơi. Giá trị đã lưu không bao giờ thay đổi.'
+  },
+  'settings.displayFormat': {
+    en: 'Display format',
+    vi: 'Định dạng hiển thị'
+  },
+  'settings.vndFull': {
+    en: 'Full VND',
+    vi: 'VND đầy đủ'
+  },
+  'settings.vndFullDesc': {
+    en: 'Amounts are entered and shown in full, e.g. 1,250,000 ₫',
+    vi: 'Nhập và hiển thị đầy đủ, ví dụ 1.250.000 ₫'
+  },
+  'settings.vndThousands': {
+    en: 'Thousand VND',
+    vi: 'Nghìn đồng'
+  },
+  'settings.vndThousandsDesc': {
+    en: 'Amounts are entered in thousands, e.g. 1,250 = 1,250,000 ₫',
+    vi: 'Nhập theo nghìn, ví dụ 1.250 = 1.250.000 ₫'
+  },
+  'settings.liveExampleLabel': {
+    en: 'Example',
+    vi: 'Ví dụ'
+  },
+  'settings.liveExampleStored': {
+    en: 'A saved amount of {stored} displays as',
+    vi: 'Số tiền đã lưu {stored} hiển thị là'
+  },
+  'settings.usdDesc': {
+    en: 'Amounts are entered and shown in dollars with cents.',
+    vi: 'Nhập và hiển thị theo đô la, có phần xu.'
+  },
+
+  'month.january': { en: 'January', vi: 'Tháng 1' },
+  'month.february': { en: 'February', vi: 'Tháng 2' },
+  'month.march': { en: 'March', vi: 'Tháng 3' },
+  'month.april': { en: 'April', vi: 'Tháng 4' },
+  'month.may': { en: 'May', vi: 'Tháng 5' },
+  'month.june': { en: 'June', vi: 'Tháng 6' },
+  'month.july': { en: 'July', vi: 'Tháng 7' },
+  'month.august': { en: 'August', vi: 'Tháng 8' },
+  'month.september': { en: 'September', vi: 'Tháng 9' },
+  'month.october': { en: 'October', vi: 'Tháng 10' },
+  'month.november': { en: 'November', vi: 'Tháng 11' },
+  'month.december': { en: 'December', vi: 'Tháng 12' },
+  'month.short.january': { en: 'Jan', vi: 'T1' },
+  'month.short.february': { en: 'Feb', vi: 'T2' },
+  'month.short.march': { en: 'Mar', vi: 'T3' },
+  'month.short.april': { en: 'Apr', vi: 'T4' },
+  'month.short.may': { en: 'May', vi: 'T5' },
+  'month.short.june': { en: 'Jun', vi: 'T6' },
+  'month.short.july': { en: 'Jul', vi: 'T7' },
+  'month.short.august': { en: 'Aug', vi: 'T8' },
+  'month.short.september': { en: 'Sep', vi: 'T9' },
+  'month.short.october': { en: 'Oct', vi: 'T10' },
+  'month.short.november': { en: 'Nov', vi: 'T11' },
+  'month.short.december': { en: 'Dec', vi: 'T12' },
+
+  'toggle.previousMonth': {
+    en: 'Previous month',
+    vi: 'Tháng trước'
+  },
+  'toggle.nextMonth': {
+    en: 'Next month',
+    vi: 'Tháng sau'
+  },
+  'toggle.switchLanguage': {
+    en: 'Switch language',
+    vi: 'Đổi ngôn ngữ'
+  },
+  'toggle.switchTheme': {
+    en: 'Switch theme',
+    vi: 'Đổi giao diện'
+  },
+  'toggle.back': {
+    en: 'Back',
+    vi: 'Quay lại'
+  },
 
   'confirm.restore': {
     en: 'Restore Backup',
@@ -894,6 +980,13 @@ export const translations = {
     en: 'Could not load chart data.',
     vi: 'Không thể tải dữ liệu biểu đồ.'
   }
+};
+
+// BCP-47 locale per app language, for Intl APIs (date formatting). Lives
+// here so a third language adds one entry, not a component conditional.
+export const languageLocale = {
+  EN: 'en-US',
+  VI: 'vi-VN'
 };
 
 export const categoryValueToKey = {

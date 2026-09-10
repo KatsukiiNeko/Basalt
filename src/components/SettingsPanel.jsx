@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react';
 import PasswordManager from './PasswordManager';
 import BackupRestore from './BackupRestore';
-import CurrencyToggle from './CurrencyToggle';
+import CurrencySection from './CurrencySection';
 import { useLanguage } from '../context/LanguageContext';
 
 const SettingsPanel = ({ isOpen, onClose, onBackup, onSecureBackup, onRestore, onSecureRestore }) => {
@@ -55,11 +55,8 @@ const SettingsPanel = ({ isOpen, onClose, onBackup, onSecureBackup, onRestore, o
         </div>
 
         <div className="settings-section">
-          <div className="settings-section-title">{t('settings.appearance')}</div>
-          <div className="settings-toggle-row">
-            <span className="settings-toggle-label">{t('settings.currency')}</span>
-            <CurrencyToggle />
-          </div>
+          <div className="settings-section-title">{t('settings.currencySection')}</div>
+          <CurrencySection />
         </div>
 
         <div className="settings-section">
