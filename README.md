@@ -52,8 +52,8 @@ The application supports multiple accounts, each with its own encrypted vault, a
 - **Installable PWA** — works offline like a native app
 - **Dark/Light theme** — system-aware with manual toggle
 - **Zero network footprint** — `connect-src 'none'` CSP, no analytics, no telemetry
-- **Explicit VND display modes** — first-run choice between full-VND and thousand-VND display; stored values are unit-neutral either way
-- **80 automated tests** — crypto round-trips, forecasting, lockout escalation, backup restore (Vitest + fake-indexeddb)
+- **Explicit VND display modes** — first-run choice between Full VND (1.250.000 VND) and Thousand VND (1.250K VND, the K marks thousands); changeable anytime in Settings with a live example; stored values are unit-neutral either way
+- **186 automated tests** — crypto round-trips, forecasting, lockout escalation, DB migrations, account isolation, backup restore, service layer, full i18n surface (Vitest + fake-indexeddb)
 
 ---
 
@@ -230,6 +230,13 @@ src/
 │   ├── transactionCrypto.js   # Verification tokens + per-transaction encrypt/decrypt
 │   ├── backupService.js       # Backup create/parse/restore flows (DB-aware)
 │   └── crypto.js              # Public facade re-exporting the modules above
+├── services/                  # Application layer — the ONLY code touching vault data
+│   ├── transactions.js        # load/add/update/delete/summary (single decrypt pass)
+│   ├── auth.js               # unlock, setup, shared corruption-aborting rekey
+│   ├── backup.js             # quick-backup create/restore
+│   └── errors.js             # typed SessionExpiredError
+├── hooks/
+│   └── useVaultData.js       # one decrypted vault load, shared by all panels
 ├── db/
 │   └── db.js                  # Dexie schema v1–v4 with migrations
 ├── i18n/
@@ -245,16 +252,24 @@ src/
 
 tests/                         # Vitest suites (not bundled)
 ├── setup.js                   # fake-indexeddb/auto bootstrap
-├── smoke.test.js              # App mounts without crashing
+├── smoke.test.js              # Test pipeline sanity
 ├── crypto.test.js             # Derive/encrypt/decrypt round-trips, verification token
 ├── forecast.test.js           # EWMA, IQR filtering, insufficient-data paths
-├── lockout.test.js            # Escalation tiers, persistence, reset behavior
-└── secureBackup.test.js       # Real-Dexie integration: backup create→parse→restore, corruption reporting
+├── lockout.test.js            # Tiers, persistence, PoW, legacy unlock-state merge
+├── dbMigrations.test.js       # v2→v3 single-account migration paths, fresh install
+├── accountIsolation.test.js   # Scoped queries + cross-key GCM rejection
+├── authService.test.js        # Unlock/setup/change-password/PBKDF2-upgrade; rekey aborts on corruption
+├── transactionService.test.js # Service writes, account-scope preservation, summary
+├── secureBackup.test.js       # Real-Dexie backup create→parse→restore, corruption reporting
+├── transactionEditing.test.js # Encrypted edit round-trip, no duplicate rows
+├── currency.test.js           # All display-mode strings pinned
+├── moneyInput.test.js         # Draft sanitization, caret math
+└── configPersistence.test.js  # Onboarding keys, format matrix, i18n surface completeness
 
-docs/decisions/                # Decision Records (DR-0001…DR-0004)
+docs/decisions/                # Decision Records (DR-0001…DR-0008)
 ```
 
-All components import crypto through the `crypto.js` facade; only the facade's named exports are public. Services (`backupService`) own all DB access for their domain — components never talk to Dexie directly for these flows.
+All components import crypto through the `crypto.js` facade; only the facade's named exports are public. The service layer (`src/services/`) owns all DB access for its domains — components never talk to Dexie directly for vault data, auth, or backups.
 
 ---
 
@@ -291,7 +306,7 @@ npm run test:run # single run (CI)
 
 Coverage priorities per the V2 brief: crypto round-trips and wrong-password rejection, forecast edge cases (EWMA, IQR outliers, insufficient data), lockout escalation and persistence, database schema/migrations/account isolation, and the full secure-backup lifecycle. Integration tests use low PBKDF2 iteration counts for speed; production constants are pinned by assertion so an accidental change fails the suite.
 
-Architecture decisions behind non-trivial changes live in `docs/decisions/` — start there before changing crypto (`DR-0002` constant-time verification), currency semantics (`DR-0003` unit-neutral storage), or the schema.
+Architecture decisions behind non-trivial changes live in `docs/decisions/` — start there before changing crypto (`DR-0002` constant-time verification), currency semantics (`DR-0003` unit-neutral storage, `DR-0007` scaled-mode K marker), lockout behavior (`DR-0006` unlock unification), the service layer (`DR-0005`), the schema, or the bundle layout (`DR-0008` lazy ECharts).
 
 ---
 
