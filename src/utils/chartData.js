@@ -4,6 +4,47 @@
  * No hardcoded values — everything derives from transaction data.
  */
 
+/**
+ * Month filtering for chart inputs. Charts must reflect the month selected
+ * in the MonthPicker — the pre-V2 charts aggregated the ENTIRE vault, so
+ * the doughnut/top-categories totals never matched the History list or
+ * the balance for the selected month.
+ */
+
+/** Number of months shown in the trend line, centered on the selection. */
+export const TREND_WINDOW = 6;
+
+/** True when a transaction's date ("YYYY-MM-DD") falls in the given month. */
+export function isTransactionInMonth(tx, year, month) {
+  const [txYear, txMonth] = tx.date.split('-').map(Number);
+  return txYear === year && txMonth - 1 === month;
+}
+
+/**
+ * Transactions filtered to one calendar month.
+ *
+ * @param {Array} transactions
+ * @param {number} year
+ * @param {number} month  0-based (Date constructor convention)
+ */
+export function transactionsInMonth(transactions, year, month) {
+  return transactions.filter((tx) => isTransactionInMonth(tx, year, month));
+}
+
+/**
+ * "YYYY-MM" keys for the [window] months ending at (year, month) inclusive —
+ * oldest first. Used for a trend that follows the selected month instead of
+ * spanning all recorded history.
+ */
+export function trendMonthKeys(year, month, window = TREND_WINDOW) {
+  const keys = [];
+  for (let i = window - 1; i >= 0; i--) {
+    const d = new Date(year, month - i, 1);
+    keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  return keys;
+}
+
 /** Max slices before merging the smallest into "Other" */
 const MAX_SLICES = 7;
 

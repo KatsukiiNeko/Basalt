@@ -307,7 +307,11 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
               </section>
             }
           >
-            <ChartsSection transactions={transactions} />
+            <ChartsSection
+              transactions={transactions}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+            />
           </Suspense>
           <History
             key={refreshKey}

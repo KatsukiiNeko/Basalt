@@ -9,7 +9,7 @@ import {
   GraphicComponent,
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import { aggregateExpensesByCategory, getTopCategories, aggregateMonthlyTrend } from '../utils/chartData';
+import { aggregateExpensesByCategory, getTopCategories, aggregateMonthlyTrend, transactionsInMonth, trendMonthKeys } from '../utils/chartData';
 import { languageLocale } from '../i18n/translations';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -620,24 +620,49 @@ export function MonthlyTrendLine({ months, income, expense, net, formatCurrency,
  * Mobile: single-column vertical stack.
  * Desktop: two-column grid (line chart spans full width, doughnut + bar side-by-side).
  */
-export default function ChartsSection({ transactions }) {
+export default function ChartsSection({ transactions, selectedMonth, selectedYear }) {
   const { formatCurrency } = useCurrency();
   const { t, language } = useLanguage();
 
-  const { expenseCategories, topCategories, totalExpenses, trend } = useMemo(() => {
-    if (!transactions || transactions.length === 0) return { expenseCategories: [], topCategories: [], totalExpenses: 0, trend: { months: [], income: [], expense: [], net: [] } };
-    const { categories: expenseCats, totalExpenses: tot } = aggregateExpensesByCategory(transactions);
-    const { categories: topCats } = getTopCategories(transactions, TOP_N);
-    const { months, income, expense, net } = aggregateMonthlyTrend(transactions);
+  // Doughnut and top-categories reflect ONLY the selected month — the same
+  // scope the History list and the month balance use. The trend line keeps a
+  // window ending at the selected month so it still provides context.
+  const monthTransactions = useMemo(
+    () => transactionsInMonth(transactions || [], selectedYear, selectedMonth),
+    [transactions, selectedYear, selectedMonth]
+  );
+
+  const { expenseCategories, topCategories, totalExpenses } = useMemo(() => {
+    if (monthTransactions.length === 0) return { expenseCategories: [], topCategories: [], totalExpenses: 0 };
+    const { categories: expenseCats, totalExpenses: tot } = aggregateExpensesByCategory(monthTransactions);
+    const { categories: topCats } = getTopCategories(monthTransactions, TOP_N);
     return {
       expenseCategories: expenseCats,
       topCategories: topCats,
       totalExpenses: tot,
-      trend: { months, income, expense, net },
     };
-  }, [transactions]);
+  }, [monthTransactions]);
 
-  // Empty state — the shared vault load owns loading/error presentation.
+  const trend = useMemo(() => {
+    // Aggregate once over the full vault (cheap, plain objects), then keep
+    // only the window of months ending at the selection.
+    const { months, income, expense, net } = aggregateMonthlyTrend(transactions || []);
+    const wanted = trendMonthKeys(selectedYear, selectedMonth);
+    const windowed = { months: [], income: [], expense: [], net: [] };
+    for (const key of wanted) {
+      const idx = months.indexOf(key);
+      if (idx !== -1) {
+        windowed.months.push(months[idx]);
+        windowed.income.push(income[idx]);
+        windowed.expense.push(expense[idx]);
+        windowed.net.push(net[idx]);
+      }
+    }
+    return windowed;
+  }, [transactions, selectedYear, selectedMonth]);
+
+  // Month empty state — charts match the History list's scope, so an empty
+  // month shows the same guidance instead of stale all-time numbers.
   if (!transactions || transactions.length === 0) {
     return (
       <section className="charts-section">
@@ -646,6 +671,19 @@ export default function ChartsSection({ transactions }) {
             <path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" />
           </svg>
           <p>{t('empty.transactions.desc')}</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (monthTransactions.length === 0) {
+    return (
+      <section className="charts-section">
+        <div className="chart-card chart-empty-card">
+          <svg className="chart-empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" />
+          </svg>
+          <p>{t('monthPicker.noData')}</p>
         </div>
       </section>
     );
