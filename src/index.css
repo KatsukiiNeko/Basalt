@@ -1596,33 +1596,125 @@ button:active::before {
   min-height: 36px;
 }
 
-/* Edit affordance stays visible at all times so the affordance is
-   discoverable on touch and mouse alike, matching the delete button. */
-.transaction-edit-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 8px;
-  transition: color var(--duration-normal) var(--ease-smooth),
-              background var(--duration-normal) var(--ease-smooth),
-              transform var(--duration-fast) var(--ease-out-back);
+/* History edit workspace. One persistent toggle switches the whole list into
+   an editing surface; a single click then opens an inline editor. */
+.history-header-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-width: 36px;
-  min-height: 36px;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
-.transaction-edit-btn:hover {
-  color: var(--primary);
+.history-header-row h2 {
+  margin-bottom: 0;
+}
+
+.history-edit-toggle {
+  padding: 0.35rem 0.875rem;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color var(--duration-normal) var(--ease-smooth),
+              color var(--duration-normal) var(--ease-smooth),
+              background var(--duration-normal) var(--ease-smooth),
+              box-shadow var(--duration-normal) var(--ease-out-expo),
+              transform var(--duration-fast) var(--ease-out-back);
+}
+
+.history-edit-toggle:hover {
+  border-color: var(--primary);
+  color: var(--text-primary);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+  transform: scale(1.03);
+}
+
+.history-edit-toggle:focus-visible {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+/* The active state stays on for the whole editing session so the user can
+   always see that the list is in edit mode. */
+.history-edit-toggle.active {
   background: var(--primary-glow);
-  transform: scale(1.15);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
-.transaction-edit-btn:active {
-  transform: scale(0.85);
+.history-edit-hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin: -0.75rem 0 0.75rem;
+}
+
+/* Editable fields read as clickable only while the workspace is active. */
+.transactions-list.edit-mode .editable {
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.transactions-list.edit-mode .editable-target {
+  display: inline-block;
+  padding: 0.15rem 0.4rem;
+  margin: -0.15rem -0.4rem;
+  border-radius: 6px;
+  border: 1px dashed transparent;
+  transition: border-color var(--duration-normal) var(--ease-smooth),
+              background var(--duration-normal) var(--ease-smooth);
+}
+
+.transactions-list.edit-mode .editable-target:hover {
+  border-color: var(--border);
+  background: var(--surface-hover);
+}
+
+.transactions-list.edit-mode .editable-target:focus-visible {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+.inline-editor-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Inline editors previously had no styles at all — they rendered as raw
+   unstyled inputs. Mirrors the tested .account-edit-input treatment. */
+.inline-edit-input {
+  padding: 0.25rem 0.5rem;
+  background: var(--surface-elevated);
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: inherit;
+  font-family: inherit;
+  box-shadow: 0 0 0 3px var(--primary-glow);
+  outline: none;
+  min-width: 0;
+  max-width: 220px;
+  width: 100%;
+}
+
+.inline-edit-input.amount {
+  text-align: right;
+  font-family: var(--font-numeric);
+  font-weight: 600;
+}
+
+.inline-edit-error {
+  font-size: 0.7rem;
+  color: var(--expense);
+  white-space: nowrap;
 }
 
 .transaction-delete-btn:hover {
@@ -3660,11 +3752,15 @@ button:active::before {
     font-size: 0.85rem;
   }
 
-  .transaction-delete-btn,
-  .transaction-edit-btn {
+  .transaction-delete-btn {
     opacity: 1;
     min-width: 44px;
     min-height: 44px;
+  }
+
+  .transactions-list.edit-mode .editable-target {
+    padding: 0.4rem 0.6rem;
+    margin: -0.4rem -0.6rem;
   }
 
   .delete-confirm-btn-inline {

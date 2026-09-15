@@ -211,6 +211,19 @@ export const translations = {
     vi: 'Sửa'
   },
 
+  'history.doneEditing': {
+    en: 'Done',
+    vi: 'Xong'
+  },
+  'history.editHint': {
+    en: 'Tap an amount, category, or note to edit it.',
+    vi: 'Chạm vào số tiền, danh mục hoặc ghi chú để sửa.'
+  },
+  'history.addNoteHint': {
+    en: 'Add note',
+    vi: 'Thêm ghi chú'
+  },
+
   'cat.foodDining': {
     en: 'Food & Dining',
     vi: 'Đồ ăn & Ăn uống'

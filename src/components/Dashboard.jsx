@@ -313,8 +313,10 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
               selectedYear={selectedYear}
             />
           </Suspense>
+          {/* No key={refreshKey}: remounting History on every save wiped its
+              inline-edit state mid-workflow. The transactions prop changing
+              after the vault reload rerenders it in place. */}
           <History
-            key={refreshKey}
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}
             transactions={transactions}

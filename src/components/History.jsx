@@ -73,12 +73,14 @@ const CategoryIcon = ({ category }) => {
 
 const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction }) => {
   const [deletingId, setDeletingId] = useState(null);
-  // Inline-edit state. "editingId" holds a persistent row-level enabling state
-  // (the purple glow); "editingField + editDraft" drive one active inline editor
-  // at a time. Source stays encrypted at rest — the service layer re-encrypts
-  // on save; this component only ever handles decrypted records.
-  const [editingId, setEditingId] = useState(null);
-  const [editingField, setEditingField] = useState(null);
+  // Edit workspace model. "editMode" is the persistent workspace toggle — the
+  // ONLY way out is the toggle itself; saves, deletes, rerenders and month
+  // navigation never exit it. "editingCell" ({ id, field }) holds the single
+  // open inline editor; "editDraft + fieldError" drive that editor. Source
+  // stays encrypted at rest — the service layer re-encrypts on save; this
+  // component only ever handles decrypted records.
+  const [editMode, setEditMode] = useState(false);
+  const [editingCell, setEditingCell] = useState(null);
   const [editDraft, setEditDraft] = useState('');
   // Field-level validation while an inline editor is open. Kept separate from
   // the global `error` banner so a bad value in one field doesn't blank the list.
@@ -104,34 +106,36 @@ const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction 
     }
   };
 
-  // Pencil toggles row-level edit mode. It "holds" until toggled again: closing
-  // the field editor does not exit edit mode, so the user can keep double
-  // clicking fields without re-arming the pencil.
-  const toggleEdit = (id) => {
-    setFieldError('');
-    setEditingId((prev) => {
-      const next = prev === id ? null : id;
-      if (next === null) {
-        setEditingField(null);
-        setEditDraft('');
-      }
-      return next;
-    });
+  // The header toggle arms the whole list as an editing workspace. Toggling
+  // off is the designated exit: it also closes any open field editor.
+  const toggleEditMode = () => {
+    if (editMode) {
+      setEditingCell(null);
+      setEditDraft('');
+      setFieldError('');
+    }
+    setEditMode(!editMode);
   };
 
+  const isEditing = (tx, field) =>
+    editMode && editingCell?.id === tx.id && editingCell.field === field;
+
+  // A single click (or Enter/Space on the focused target) opens the editor
+  // immediately in edit mode — no double-click, no arming step. Clicking a
+  // different field/row simply moves the editor there.
   const openFieldEditor = (tx, field) => {
+    if (!editMode) return;
     setFieldError('');
-    if (editingId !== tx.id) return;
     if (field === 'amount') {
       setEditDraft(tx.amount);
     } else {
       setEditDraft(tx[field] || '');
     }
-    setEditingField(field);
+    setEditingCell({ id: tx.id, field });
   };
 
   const commitFieldEdit = async (tx, field, valueOverride) => {
-    if (editingId !== tx.id) return;
+    if (editingCell?.id !== tx.id || editingCell.field !== field) return;
     // valueOverride lets callers (e.g. the category <select>) commit the picked
     // value synchronously without depending on a queued setEditDraft.
     const value = valueOverride !== undefined ? valueOverride : editDraft;
@@ -156,7 +160,9 @@ const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction 
       next.date = value;
     }
 
-    setEditingField(null);
+    // Close the editor but stay in edit mode — the workspace remains active
+    // so the next transaction can be edited with one click.
+    setEditingCell(null);
     setEditDraft('');
     setFieldError('');
 
@@ -167,7 +173,7 @@ const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction 
       // The list stays mounted and the row intact: a failed inline edit must
       // not blank the month's history. Re-open the editor so the typed value
       // survives and the failure is shown next to it.
-      setEditingField(field);
+      setEditingCell({ id: tx.id, field });
       setFieldError(err.code === 'SESSION_EXPIRED'
         ? t('history.errors.sessionExpired')
         : t('history.errors.updateFailed'));
@@ -175,7 +181,7 @@ const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction 
   };
 
   const cancelFieldEdit = () => {
-    setEditingField(null);
+    setEditingCell(null);
     setEditDraft('');
     setFieldError('');
   };
@@ -191,7 +197,19 @@ const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction 
 
   return (
     <div className="transaction-history">
-      <h2>{t('history.title')}</h2>
+      <div className="history-header-row">
+        <h2>{t('history.title')}</h2>
+        <button
+          className={`history-edit-toggle${editMode ? ' active' : ''}`}
+          onClick={toggleEditMode}
+          aria-pressed={editMode}
+          title={editMode ? t('history.doneEditing') : t('history.edit')}
+        >
+          {editMode ? t('history.doneEditing') : t('history.edit')}
+        </button>
+      </div>
+
+      {editMode && <p className="history-edit-hint">{t('history.editHint')}</p>}
 
       {error && <div className="error-message" role="alert">{error}</div>}
 
@@ -211,23 +229,36 @@ const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction 
           <p>{t('empty.transactions.desc')}</p>
         </div>
       ) : (
-        <div className="transactions-list">
+        <div className={`transactions-list${editMode ? ' edit-mode' : ''}`}>
           {monthTransactions.map((transaction) => {
-            const rowArmed = editingId === transaction.id;
             const openEditor = (field) => openFieldEditor(transaction, field);
+            // In edit mode every field is a single-click (and Enter/Space)
+            // target; outside edit mode rows stay read-only. The props sit on
+            // the editable-target span that the editor REPLACES — so while a
+            // cell is open, no "open this cell" handler exists in the tree:
+            // clicks inside the editor (caret placement, native select) and
+            // the post-commit click can never reseed or re-open the editor.
+            const editProps = (field) => (editMode ? {
+              role: 'button',
+              tabIndex: 0,
+              onClick: () => openEditor(field),
+              onKeyDown: (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  openEditor(field);
+                }
+              },
+            } : {});
             return (
-            <div key={transaction.id} className={`transaction-item ${deletingId === transaction.id ? 'deleting' : ''} ${rowArmed ? 'editing' : ''}`}>
+            <div key={transaction.id} className={`transaction-item ${deletingId === transaction.id ? 'deleting' : ''}`}>
               <CategoryIcon category={transaction.category} />
               <div className="transaction-left">
                 <div className="transaction-date">
                   {formatDate(transaction.date)}
                 </div>
                 <div className="transaction-info">
-                  <div
-                    className="transaction-category editable"
-                    onDoubleClick={rowArmed ? () => openEditor('category') : undefined}
-                  >
-                    {rowArmed && editingField === 'category' ? (
+                  <div className="transaction-category editable">
+                    {isEditing(transaction, 'category') ? (
                       <>
                         <select
                           className="inline-edit-input"
@@ -244,20 +275,17 @@ const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction 
                         </select>
                       </>
                     ) : (
-                      <span className="editable-target">
+                      <span className="editable-target" {...editProps('category')}>
                         {categoryValueToKey[transaction.category] ? t(categoryValueToKey[transaction.category]) : transaction.category}
                       </span>
                     )}
-                    {rowArmed && editingField === 'category' && fieldError && (
+                    {isEditing(transaction, 'category') && fieldError && (
                       <span className="inline-edit-error">{fieldError}</span>
                     )}
                   </div>
-                  {(transaction.note || rowArmed) && (
-                    <div
-                      className="transaction-note editable"
-                      onDoubleClick={rowArmed ? () => openEditor('note') : undefined}
-                    >
-                      {rowArmed && editingField === 'note' ? (
+                  {(transaction.note || editMode) && (
+                    <div className="transaction-note editable">
+                      {isEditing(transaction, 'note') ? (
                         <span className="inline-editor-wrap">
                           <input
                             className="inline-edit-input"
@@ -274,7 +302,7 @@ const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction 
                           {fieldError && <span className="inline-edit-error">{fieldError}</span>}
                         </span>
                       ) : (
-                        <span className="editable-target">
+                        <span className="editable-target" {...editProps('note')}>
                           {transaction.note || t('history.addNoteHint')}
                         </span>
                       )}
@@ -284,7 +312,7 @@ const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction 
               </div>
               <div className="transaction-right">
                 <div className={`transaction-amount ${transaction.type}`}>
-                  {rowArmed && editingField === 'amount' ? (
+                  {isEditing(transaction, 'amount') ? (
                     <span className="inline-editor-wrap">
                       <input
                         className="inline-edit-input amount"
@@ -304,24 +332,13 @@ const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction 
                   ) : (
                     <span
                       className="editable-target"
-                      onDoubleClick={rowArmed ? () => openEditor('amount') : undefined}
+                      {...editProps('amount')}
                     >
                       <span className="transaction-direction">{transaction.type === 'expense' ? '-' : '+'}</span>
                       {formatCurrency(transaction.amount)}
                     </span>
                   )}
                 </div>
-                <button
-                  className={`transaction-edit-btn${rowArmed ? ' active' : ''}`}
-                  onClick={() => toggleEdit(transaction.id)}
-                  title={rowArmed ? t('history.doneEditing') : t('history.edit')}
-                  aria-label={`${rowArmed ? t('history.doneEditing') : t('history.edit')} ${t(categoryValueToKey[transaction.category] || '') || transaction.category}`}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                  </svg>
-                </button>
                 {deletingId === transaction.id ? (
                   <div className="delete-confirm-inline">
                     <button
