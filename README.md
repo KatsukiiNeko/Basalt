@@ -314,15 +314,6 @@ Architecture decisions behind non-trivial changes live in `docs/decisions/` — 
 
 Pull requests, issues, and feature suggestions are welcome.
 
-```bash
-git checkout -b feature/amazing-feature
-git commit -m 'Add amazing feature'
-git push origin feature/amazing-feature
-# Open a Pull Request
-```
-
----
-
 ## License
 
 MIT License. See `LICENSE` for details.
