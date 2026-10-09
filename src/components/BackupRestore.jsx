@@ -13,13 +13,14 @@ import {
 } from '../utils/lockout';
 import ConfirmDialog from './ConfirmDialog';
 
-const BackupRestore = ({ onBackup, onSecureBackup, onRestore, onSecureRestore }) => {
+const BackupRestore = ({ onBackup, onSecureBackup, onRestore, onSecureRestore, onExport }) => {
   const [mode, setMode] = useState(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [pendingBackup, setPendingBackup] = useState(null);
   const [restoreMeta, setRestoreMeta] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -110,6 +111,29 @@ const BackupRestore = ({ onBackup, onSecureBackup, onRestore, onSecureRestore })
   const handleSecureBackupClick = () => {
     resetForm();
     setMode('secureBackup');
+  };
+
+  // Export (DR-0009): builds the .xlsx in memory and downloads it. The
+  // status/error lines double as the toast: success names the file and
+  // row count, empty explains there is nothing to export yet, failures
+  // offer a retry by simply pressing the button again.
+  const handleExport = async () => {
+    if (!onExport) return;
+    setError('');
+    setStatus('');
+    setIsExporting(true);
+    try {
+      const result = await onExport();
+      if (result.empty) {
+        setStatus(t('export.empty'));
+      } else {
+        setStatus(t('export.success', { filename: result.filename, count: result.count }));
+      }
+    } catch (err) {
+      setError(err.code === 'ROW_LIMIT' ? t('export.rowLimit') : t('export.failedPrefix') + err.message);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleSecureBackupSubmit = async (e) => {
@@ -334,9 +358,26 @@ const BackupRestore = ({ onBackup, onSecureBackup, onRestore, onSecureRestore })
         >
           {isLoading && !mode ? t('backup.restoreBtnLoading') : t('backup.restoreBtn')}
         </button>
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={isLoading || isExporting}
+          aria-busy={isExporting}
+          className="backup-button export-button"
+        >
+          {isExporting && (
+            <span className="spinner export-spinner" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+              </svg>
+            </span>
+          )}
+          {isExporting ? t('export.exporting') : t('export.button')}
+        </button>
       </div>
-      {error && <div className="error-message">{error}</div>}
-      {status && <div className="status-message">{status}</div>}
+      {error && <div className="error-message" role="alert">{error}</div>}
+      {status && <div className="status-message" role="status">{status}</div>}
+      <p className="export-privacy-note">{t('export.privacyNotice')}</p>
 
       {showConfirm && (
         <ConfirmDialog

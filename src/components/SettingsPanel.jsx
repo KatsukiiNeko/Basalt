@@ -4,7 +4,7 @@ import BackupRestore from './BackupRestore';
 import CurrencySection from './CurrencySection';
 import { useLanguage } from '../context/LanguageContext';
 
-const SettingsPanel = ({ isOpen, onClose, onBackup, onSecureBackup, onRestore, onSecureRestore }) => {
+const SettingsPanel = ({ isOpen, onClose, onBackup, onSecureBackup, onRestore, onSecureRestore, onExport }) => {
   const { t } = useLanguage();
 
   return (
@@ -50,6 +50,7 @@ const SettingsPanel = ({ isOpen, onClose, onBackup, onSecureBackup, onRestore, o
             onSecureBackup={onSecureBackup}
             onRestore={onRestore}
             onSecureRestore={onSecureRestore}
+            onExport={onExport}
           />
         </div>
       </div>

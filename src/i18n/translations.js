@@ -585,6 +585,35 @@ export const translations = {
     vi: 'Ngày sao lưu'
   },
 
+  'export.button': {
+    en: 'Export, Excel (.xlsx)',
+    vi: 'Xuất, Excel (.xlsx)'
+  },
+  'export.exporting': {
+    en: 'Exporting...',
+    vi: 'Đang xuất...'
+  },
+  'export.success': {
+    en: 'Exported {filename} ({count} transactions).',
+    vi: 'Đã xuất {filename} ({count} giao dịch).'
+  },
+  'export.empty': {
+    en: 'Nothing to export yet.',
+    vi: 'Chưa có gì để xuất.'
+  },
+  'export.failedPrefix': {
+    en: 'Export failed: ',
+    vi: 'Xuất thất bại: '
+  },
+  'export.rowLimit': {
+    en: 'Too many rows to export in one file (limit 1,048,576).',
+    vi: 'Quá nhiều hàng để xuất vào một tệp (giới hạn 1.048.576).'
+  },
+  'export.privacyNotice': {
+    en: 'The exported .xlsx file is not encrypted — store it somewhere safe.',
+    vi: 'Tệp .xlsx xuất ra không được mã hóa — hãy lưu ở nơi an toàn.'
+  },
+
   'accounts.title': {
     en: 'Basalt',
     vi: 'Basalt'

@@ -45,7 +45,7 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, currency, vndDisplayMode } = useCurrency();
   const { t } = useLanguage();
 
   const accountId = getActiveAccountId();
@@ -113,16 +113,29 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
   // delete bumps the shared vault so every panel stays consistent.
   const handleHistoryEdited = () => setRefreshKey(k => k + 1);
 
-  const downloadBackup = (backup, suffix) => {
-    const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
+  // Shared download plumbing for every file this screen produces (backup
+  // JSON and exported .xlsx): object URL in, anchor click, URL revoked.
+  const downloadBlob = (blob, filename) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `basalt-${suffix}-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const downloadBackup = (backup, suffix) => {
+    const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
+    downloadBlob(blob, `basalt-${suffix}-${new Date().toISOString().split('T')[0]}.json`);
+  };
+
+  // The XLSX writer is a lazy chunk (DR-0008/DR-0009): it loads only on
+  // click and the service worker precaches it for offline exports.
+  const handleExport = async () => {
+    const { exportWorkbook } = await import('../services/exportService');
+    return exportWorkbook({ accountId, currency, vndDisplayMode });
   };
 
   const handleBackup = async () => {
@@ -332,6 +345,7 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
         onSecureBackup={handleSecureBackup}
         onRestore={handleRestore}
         onSecureRestore={handleSecureRestore}
+        onExport={handleExport}
       />
     </div>
   );
