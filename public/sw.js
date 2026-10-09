@@ -3,7 +3,10 @@
 // every client to re-fetch the precache manifest. The V2 build splits
 // ECharts into a lazy chunk — it is NOT precached (added to cache on
 // first fetch below) so installs stay lean; it self-caches once used.
-const CACHE_NAME = 'basalt-cache-v6';
+// The XLSX export chunk graph IS precached (V7): vite.config.js pins
+// stable URLs for its three chunks, and exports must work offline on
+// first use.
+const CACHE_NAME = 'basalt-cache-v7';
 const FILES_TO_CACHE = [
   '/',
   '/index.html',
@@ -16,7 +19,13 @@ const FILES_TO_CACHE = [
   '/fonts/dm-sans-latin-ext.woff2',
   '/fonts/jetbrains-mono-latin.woff2',
   '/fonts/jetbrains-mono-latin-ext.woff2',
-  '/fonts/jetbrains-mono-vietnamese.woff2'
+  '/fonts/jetbrains-mono-vietnamese.woff2',
+  // Lazy export chunk graph (entry + write-excel-file/fflate + shared
+  // chartData), stable names from vite.config.js chunkFileNames — must
+  // match the built asset paths or offline export breaks on first use.
+  '/assets/export-xlsx.js',
+  '/assets/export-xlsx-writer.js',
+  '/assets/chartData.js'
 ];
 
 // Install event - cache static assets, skip waiting
