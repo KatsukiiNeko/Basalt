@@ -1008,8 +1008,11 @@ export const translations = {
   }
 };
 
-// BCP-47 locale per app language, for Intl APIs (date formatting). Lives
-// here so a third language adds one entry, not a component conditional.
+// BCP-47 locale per app language, for the Intl APIs that need one —
+// date formatting in ChartsSection and History, both falling back to
+// 'en-US' when the key is missing. We keep the map here, next to the
+// strings it pairs with, so a third language is one entry in one file
+// instead of another conditional in every component that formats a date.
 export const languageLocale = {
   EN: 'en-US',
   VI: 'vi-VN'

@@ -33,8 +33,9 @@ describe('formatMoney — USD', () => {
 
 describe('formatMoney — VND scaled mode (legacy thousand-unit storage)', () => {
   it('multiplies stored thousands up for display with full digit grouping', () => {
-    // Stored "50" (thousand-VND) displays as 50.000 VND — full 000 digits,
-    // no abbreviated K marker (user-preferred presentation).
+    // VND is stored in thousands, so scaled mode multiplies up for display:
+    // "50" has to render as 50.000 VND — every digit, no abbreviated K
+    // marker, which is the presentation users asked for.
     expect(formatMoney(50, 'VND', 'scaled')).toBe('50.000 VND');
     expect(formatMoney(1250, 'VND', 'scaled')).toBe('1.250.000 VND');
   });
@@ -55,9 +56,10 @@ describe('formatMoney — DR-0003 invariant (display-only scaling)', () => {
 
     formatMoney(stored, 'VND', 'scaled');
 
-    expect(stored).toBe(snapshot); // untouched
-    // One stored number, two legitimate presentations — never two storages.
-    // Scaled multiplies to full đồng for display; exact shows the raw value.
+    expect(stored).toBe(snapshot); // the input is left untouched
+    // One stored number, two legitimate presentations — never two
+    // storages. Scaled multiplies up to full đồng for display; exact shows
+    // the raw stored value.
     expect(formatMoney(stored, 'VND', 'scaled')).toBe('1.250.000 VND');
     expect(formatMoney(stored, 'VND', 'exact')).toBe('1.250 VND');
   });
@@ -70,7 +72,7 @@ describe('formatMoney — defensive defaults', () => {
     [-Infinity],
     [undefined],
     [null],
-    ['1250000'], // string amounts are a programming error, rendered as zero
+    ['1250000'], // a string amount is a caller bug — render zero, don't throw
     [{}]
   ])('renders %p as the zero amount instead of throwing', (input) => {
     expect(formatMoney(input, 'USD')).toBe('0.00 USD');

@@ -1,5 +1,7 @@
-// Theme context. Standard provider+hook module; the react-refresh export
-// restriction is intentionally waived (hook and provider belong together).
+// Our dark/light theme state: ThemeProvider holds it, useTheme reads it,
+// and both are exported from this file — so the react-refresh rule is
+// waived on the next line rather than splitting the hook into a module of
+// its own.
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
@@ -21,18 +23,20 @@ export const ThemeProvider = ({ children }) => {
     }
   });
 
-  // Sync the DOM attribute during render itself (provider body runs before
-  // children render): canvas-based consumers like ECharts resolve CSS vars
-  // while rendering, so the palette they read must match `theme` in the same
-  // pass — an effect would run one cycle too late.
+  // We write data-theme during render itself rather than in an effect:
+  // the provider body runs before children render, and canvas-based
+  // consumers like ECharts resolve CSS variables at that moment. An effect
+  // would land one cycle too late, so they'd paint with the previous
+  // palette while `theme` already reports the new one.
   document.documentElement.setAttribute('data-theme', theme);
 
   useEffect(() => {
     try {
       localStorage.setItem(THEME_KEY, theme);
     } catch {
-      // Storage unavailable (private mode): the theme still applies for
-      // this session via the data-theme attribute set during render.
+      // Private mode (or a full disk) can make localStorage throw. Nothing
+      // to roll back: data-theme was already applied during render, so the
+      // theme holds for this session — it just won't survive a reload.
     }
   }, [theme]);
 

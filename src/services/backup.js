@@ -1,8 +1,10 @@
-// Backup application service: the UI layer owns file picking/downloads, this
-// layer owns everything that touches the DB or crypto. Versioned formats:
+// Our backup application service: the UI layer (Dashboard) owns file
+// picking and downloads, this layer owns everything that touches the DB
+// or crypto. Versioned formats, routed by Dashboard.handleRestore:
 //   1 — pre-multi-account array of raw transactions
 //   2 — quick backup: session-key-encrypted { transactions, timestamp }
 //   3 — secure backup: password-derived key, cross-device portable
+// Only v2 lives here; v1 and v3 go to the BackupRestore password flow.
 import { db } from '../db/db';
 import {
   encryptData,
@@ -35,9 +37,10 @@ export function createQuickBackup(accountId) {
   })();
 }
 
-// Restores a v2 quick backup into `accountId`. Returns the restored count.
-// The whole replacement happens inside one Dexie transaction — a failure
-// leaves the existing rows untouched.
+// Restores a v2 quick backup into `accountId` and returns the restored
+// count. We stamp accountId onto every restored row so it lands in that
+// account's scope, and the whole replacement runs inside one Dexie
+// transaction — a failure leaves the existing rows untouched.
 export async function restoreQuickBackup(backup, accountId) {
   const key = getSessionKey(accountId);
   if (!key) throw new Error('SESSION_EXPIRED');

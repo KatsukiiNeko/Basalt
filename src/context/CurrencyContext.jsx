@@ -1,5 +1,7 @@
-// Standard provider+hook context module; the react-refresh export
-// restriction is intentionally waived (hook and provider belong together).
+// Our currency state (code plus VND display mode), with formatting folded
+// in: CurrencyProvider owns it, useCurrency reads it, both exported from
+// this file — so the react-refresh rule is waived on the next line rather
+// than scattering the hook into its own module.
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState } from 'react';
 import { formatMoney } from '../utils/currency';
@@ -32,8 +34,9 @@ export const CurrencyProvider = ({ children }) => {
     try {
       localStorage.setItem(key, value);
     } catch {
-      // Storage can be unavailable (private mode) — the choice still applies
-      // for this session.
+      // Private mode (or a full disk) can make localStorage throw. The
+      // setter already moved state, so formatting follows the new choice
+      // for the rest of this session — we only lose the persistence.
     }
   };
 

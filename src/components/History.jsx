@@ -73,17 +73,21 @@ const CategoryIcon = ({ category }) => {
 
 const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction }) => {
   const [deletingId, setDeletingId] = useState(null);
-  // Edit workspace model. "editMode" is the persistent workspace toggle — the
-  // ONLY way out is the toggle itself; saves, deletes, rerenders and month
-  // navigation never exit it. "editingCell" ({ id, field }) holds the single
-  // open inline editor; "editDraft + fieldError" drive that editor. Source
-  // stays encrypted at rest — the service layer re-encrypts on save; this
-  // component only ever handles decrypted records.
+  // Edit workspace model — the state machine behind inline editing:
+  //   editMode      — the persistent workspace toggle. It's the ONLY way out
+  //                   of edit mode: saves, deletes, rerenders and month
+  //                   navigation never exit it.
+  //   editingCell   — { id, field } for the single open inline editor; null
+  //                   means no cell is being edited.
+  //   editDraft + fieldError — the draft the open editor is holding and its
+  //                   field-level validation message.
+  // Source stays encrypted at rest — the service layer re-encrypts on save,
+  // and this component only ever handles decrypted records.
   const [editMode, setEditMode] = useState(false);
   const [editingCell, setEditingCell] = useState(null);
   const [editDraft, setEditDraft] = useState('');
-  // Field-level validation while an inline editor is open. Kept separate from
-  // the global `error` banner so a bad value in one field doesn't blank the list.
+  // Validation for the cell currently being edited. We keep it apart from
+  // the global `error` banner so one bad value can't blank the whole list.
   const [fieldError, setFieldError] = useState('');
   const [error, setError] = useState('');
   const { formatCurrency } = useCurrency();
@@ -107,7 +111,7 @@ const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction 
   };
 
   // The header toggle arms the whole list as an editing workspace. Toggling
-  // off is the designated exit: it also closes any open field editor.
+  // off is the designated exit, and it also closes whatever cell is open.
   const toggleEditMode = () => {
     if (editMode) {
       setEditingCell(null);
@@ -120,9 +124,9 @@ const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction 
   const isEditing = (tx, field) =>
     editMode && editingCell?.id === tx.id && editingCell.field === field;
 
-  // A single click (or Enter/Space on the focused target) opens the editor
+  // One click (or Enter/Space on the focused target) opens the editor
   // immediately in edit mode — no double-click, no arming step. Clicking a
-  // different field/row simply moves the editor there.
+  // different field or row just moves the editor there.
   const openFieldEditor = (tx, field) => {
     if (!editMode) return;
     setFieldError('');
@@ -136,8 +140,9 @@ const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction 
 
   const commitFieldEdit = async (tx, field, valueOverride) => {
     if (editingCell?.id !== tx.id || editingCell.field !== field) return;
-    // valueOverride lets callers (e.g. the category <select>) commit the picked
-    // value synchronously without depending on a queued setEditDraft.
+    // valueOverride lets callers (e.g. the category <select>) commit the
+    // value they just picked synchronously, without waiting on a queued
+    // setEditDraft.
     const value = valueOverride !== undefined ? valueOverride : editDraft;
 
     const next = { ...tx };
@@ -160,8 +165,8 @@ const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction 
       next.date = value;
     }
 
-    // Close the editor but stay in edit mode — the workspace remains active
-    // so the next transaction can be edited with one click.
+    // Close the editor but stay in edit mode — the workspace stays armed, so
+    // the next transaction can be edited with one more click.
     setEditingCell(null);
     setEditDraft('');
     setFieldError('');
@@ -170,9 +175,9 @@ const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction 
       await updateTransaction(tx.id, next, next.accountId);
       onEditTransaction?.();
     } catch (err) {
-      // The list stays mounted and the row intact: a failed inline edit must
-      // not blank the month's history. Re-open the editor so the typed value
-      // survives and the failure is shown next to it.
+      // We keep the list mounted and the row intact: a failed inline edit
+      // must not blank the month's history. Re-open the editor so the typed
+      // value survives and the failure shows next to it.
       setEditingCell({ id: tx.id, field });
       setFieldError(err.code === 'SESSION_EXPIRED'
         ? t('history.errors.sessionExpired')
@@ -233,11 +238,12 @@ const History = ({ selectedMonth, selectedYear, transactions, onEditTransaction 
           {monthTransactions.map((transaction) => {
             const openEditor = (field) => openFieldEditor(transaction, field);
             // In edit mode every field is a single-click (and Enter/Space)
-            // target; outside edit mode rows stay read-only. The props sit on
-            // the editable-target span that the editor REPLACES — so while a
-            // cell is open, no "open this cell" handler exists in the tree:
-            // clicks inside the editor (caret placement, native select) and
-            // the post-commit click can never reseed or re-open the editor.
+            // target; outside edit mode rows stay read-only. These props sit
+            // on the editable-target span that the editor REPLACES — so while
+            // a cell is open no "open this cell" handler exists in the tree
+            // at all: clicks inside the editor (caret placement, native
+            // select) and the post-commit click can never reseed or re-open
+            // it.
             const editProps = (field) => (editMode ? {
               role: 'button',
               tabIndex: 0,

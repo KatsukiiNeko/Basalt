@@ -33,7 +33,7 @@ describe('computeBackupFingerprint', () => {
     const a = await computeBackupFingerprint(backup);
     const b = await computeBackupFingerprint(backup);
     expect(a).toBe(b);
-    expect(a).toMatch(/^[0-9a-f]{64}$/); // SHA-256 hex
+    expect(a).toMatch(/^[0-9a-f]{64}$/); // SHA-256 hex, 64 chars
   });
 
   it('differs when salt or ciphertext differ', async () => {
@@ -63,8 +63,8 @@ describe('lockout tiers — time lockout escalation', () => {
     for (let i = 0; i < 3; i++) await recordFailedAttempt(FP);
     const state = await getLockoutState(FP);
     expect(state.failedAttempts).toBe(3);
-    // Tier at 3 has duration 0 -> lockoutUntil is now+0 (already expired),
-    // so no time lockout, but the tier is recorded.
+    // Our tier at 3 has duration 0 -> lockoutUntil is now+0 (already
+    // expired), so there is no time lockout, but the tier is recorded.
     const verdict = await checkLockout(FP);
     expect(verdict.locked).toBe(false);
     expect(state.lockoutUntil).toBeLessThanOrEqual(Date.now());
@@ -90,18 +90,18 @@ describe('lockout tiers — time lockout escalation', () => {
     expect(state.pbkdf2Multiplier).toBe(50);
 
     // SESSION_HARD_CAP = 20 is checked BEFORE time lockouts, so the 30-min
-    // tier manifests as state, while the verdict reports session_limit.
+    // tier shows up as state while the verdict reports session_limit.
     const verdict = await checkLockout(FP);
     expect(verdict.reason).toBe('session_limit');
     expect(verdict.retryAfter).toBe(Infinity);
 
-    // The 30-minute tier is still recorded on the persisted timestamp.
+    // Even so, the 30-minute tier is still recorded on the persisted timestamp.
     const fresh = await getLockoutState(FP);
     expect(fresh.lockoutUntil - Date.now()).toBeLessThanOrEqual(30 * 60 * 1000);
     expect(fresh.lockoutUntil - Date.now()).toBeGreaterThan(29 * 60 * 1000);
 
-    // One attempt below the hard cap the 16-attempt tier still yields a
-    // plain time lockout verdict (600s), proving tier ordering.
+    // One attempt below the hard cap, the 16-attempt tier still yields a
+    // plain time lockout verdict (600s) — that ordering is what we prove.
     for (let i = 0; i < 19; i++) await recordFailedAttempt('fp-19');
     const v19 = await checkLockout('fp-19');
     expect(v19.reason).toBe('time_lockout');
@@ -122,7 +122,7 @@ describe('session hard cap', () => {
 
   it('session counter survives clearing persistent stores only', async () => {
     for (let i = 0; i < 5; i++) await recordFailedAttempt(FP);
-    // Attacker clears LS+IDB but sessionStorage still counts.
+    // The attacker clears LS+IDB, but sessionStorage still counts.
     localStorage.clear();
     await db.settings.bulkDelete(['backupLockout:' + FP]).catch(() => {});
     const state = await getLockoutState(FP);
@@ -145,7 +145,7 @@ describe('mirror persistence across LS / SS / IDB', () => {
   });
 
   it('takes the MAX across mirrors if one lags behind', async () => {
-    // IDB says 4 attempts, LS empty.
+    // We seed IDB at 4 attempts while LS stays empty.
     await db.settings.put({
       key: 'backupLockout:' + FP,
       value: { failedAttempts: 4, lastAttemptTs: Date.now(), lockoutUntil: 0, pbkdf2Multiplier: 2, version: 1 }
@@ -183,7 +183,7 @@ describe('getEscalatedIterations', () => {
 
   it('is capped even for absurd multipliers', () => {
     expect(getEscalatedIterations(600000, 100)).toBe(60000000);
-    expect(getEscalatedIterations(600000, 1000)).toBe(60000000); // hard cap
+    expect(getEscalatedIterations(600000, 1000)).toBe(60000000); // hits the hard cap
   });
 });
 
@@ -219,7 +219,7 @@ describe('computeProofOfWork', () => {
     const challenge = Array.from(crypto.getRandomValues(new Uint8Array(16)));
     const { nonce, hash } = await computeProofOfWork(challenge, 8);
 
-    // Verify independently: recompute hash(challenge || nonceBE).
+    // We verify independently: recompute hash(challenge || nonceBE) by hand.
     const ch = new Uint8Array(challenge);
     const nb = new Uint8Array(4);
     nb[0] = (nonce >>> 24) & 0xff;
@@ -287,7 +287,8 @@ describe('pwd lockout: legacy unlock-state merge (pre-V2 LockScreen)', () => {
   // V2's LockScreen reads the same pwd-lockout engine as backup restore.
   // Returning users carry attempt history in the OLD inline stores
   // ('mv_cumulative_attempts' in localStorage, 'lockoutData:<id>' in IDB).
-  // The merge must take the max and clear legacy keys — never reset history.
+  // Our merge has to take the max and clear the legacy keys — never reset
+  // history on the way through.
 
   it('folds legacy localStorage attempts into the first V2 read', async () => {
     localStorage.setItem('mv_cumulative_attempts', JSON.stringify({
@@ -318,13 +319,13 @@ describe('pwd lockout: legacy unlock-state merge (pre-V2 LockScreen)', () => {
       key: 'lockoutData:' + ACCT,
       value: { endTime: 0, failedAttempts: 6 },
     });
-    // New-system count: seed one failure, then read.
-    await recordPwdFailedAttempt(ACCT); // reads legacy(6) -> writes 7, clears legacy
+    // We seed one failure in the new system, then read.
+    await recordPwdFailedAttempt(ACCT); // reads legacy(6) -> writes 7, clears legacy keys
 
     const state = await getPwdLockoutState(ACCT);
     expect(state.failedAttempts).toBe(7);
 
-    // Legacy keys are gone after the failure write — no double counting.
+    // Our failure write already dropped the legacy keys — no double counting.
     const legacyLs = JSON.parse(localStorage.getItem('mv_cumulative_attempts') || '{}');
     expect(legacyLs[ACCT]).toBeUndefined();
     expect(await db.settings.get('lockoutData:' + ACCT)).toBeUndefined();

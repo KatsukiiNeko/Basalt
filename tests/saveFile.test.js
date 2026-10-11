@@ -1,6 +1,7 @@
-// saveBlob: destination picker (Chromium) vs anchor-download fallback.
-// jsdom has neither showSaveFilePicker nor URL.createObjectURL, so both
-// paths are stubbed and asserted directly.
+// saveBlob's two paths: the Chromium destination picker, and the anchor
+// download that src/utils/saveFile.js falls back to. jsdom has neither
+// showSaveFilePicker nor URL.createObjectURL, so both paths are stubbed
+// here and asserted directly.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { saveBlob } from '../src/utils/saveFile';
 

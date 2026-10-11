@@ -1,8 +1,8 @@
 
-/* Self-hosted typefaces — no runtime font CDN (README privacy guarantee).
-   DM Sans ships as a variable font (weight 300-800); JetBrains Mono as a
-   variable font (weight 100-800) served per unicode subset. The browser
-   downloads only the subsets actually rendered. */
+/* We self-host both typefaces — no runtime font CDN (README privacy
+   guarantee). DM Sans ships as a variable font (weight 300-800); JetBrains
+   Mono as a variable font (weight 100-800), served per unicode subset so
+   the browser downloads only the subsets actually rendered. */
 @font-face {
   font-family: 'DM Sans';
   font-style: normal;
@@ -94,7 +94,8 @@
   --gradient-primary: linear-gradient(135deg, var(--primary-light), var(--primary));
   --gradient-accent: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
 
-  /* category chart colours (dark theme) */
+  /* our --cat-* category chart colours (dark theme) — ChartsSection reads
+     these per slice */
   --cat-food:         #f59e0b;
   --cat-transport:    #3b82f6;
   --cat-shopping:     #ec4899;
@@ -160,7 +161,8 @@
   --gradient-primary: linear-gradient(135deg, var(--primary-light), var(--primary));
   --gradient-accent: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
 
-  /* category chart colours (light theme) */
+  /* our --cat-* category chart colours (light theme) — the same ten
+     categories, restated for light surfaces */
   --cat-food:         #d97706;
   --cat-transport:    #2563eb;
   --cat-shopping:     #db2777;
@@ -233,8 +235,9 @@ body {
   font-weight: 600;
 }
 
-/* Root error boundary — renders outside all providers, so it relies on
-   plain tokens only. Kept deliberately minimal: one message, one action. */
+/* Root error boundary — it renders outside all providers, so it relies on
+   plain tokens only. We keep it deliberately minimal: one message, one
+   action. */
 .error-boundary {
   min-height: 100dvh;
   display: flex;
@@ -1434,8 +1437,8 @@ button:active::before {
   filter: none;
 }
 
-/* Secondary action (cancel edit) — quiet outline treatment so it never
-   competes with the primary submit button. */
+/* Secondary action (cancel edit) — we give it a quiet outline treatment so
+   it never competes with the primary submit button. */
 .cancel-edit-button {
   background: transparent;
   color: var(--text-secondary);
@@ -1596,8 +1599,9 @@ button:active::before {
   min-height: 36px;
 }
 
-/* History edit workspace. One persistent toggle switches the whole list into
-   an editing surface; a single click then opens an inline editor. */
+/* This is our history edit workspace: one persistent toggle switches the
+   whole list into an editing surface, and a single click then opens an
+   inline editor. */
 .history-header-row {
   display: flex;
   align-items: center;
@@ -1639,8 +1643,8 @@ button:active::before {
   box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
-/* The active state stays on for the whole editing session so the user can
-   always see that the list is in edit mode. */
+/* We leave the active state on for the whole editing session so the user
+   can always see that the list is in edit mode. */
 .history-edit-toggle.active {
   background: var(--primary-glow);
   border-color: var(--primary);
@@ -1653,7 +1657,8 @@ button:active::before {
   margin: -0.75rem 0 0.75rem;
 }
 
-/* Editable fields read as clickable only while the workspace is active. */
+/* We only make editable fields read as clickable while the workspace is
+   active. */
 .transactions-list.edit-mode .editable {
   cursor: pointer;
   border-radius: 6px;
@@ -1688,8 +1693,8 @@ button:active::before {
   max-width: 100%;
 }
 
-/* Inline editors previously had no styles at all — they rendered as raw
-   unstyled inputs. Mirrors the tested .account-edit-input treatment. */
+/* Inline editors had no styles at all before this block — they rendered as
+   raw unstyled inputs. We mirror the tested .account-edit-input treatment. */
 .inline-edit-input {
   padding: 0.25rem 0.5rem;
   background: var(--surface-elevated);
@@ -2134,7 +2139,8 @@ button:active::before {
   cursor: not-allowed;
 }
 
-/* Export (DR-0009): the spinner rides inline in the button label. */
+/* Export (DR-0009): the spinner rides inline in the button label — the
+   flex gap below is what keeps it off the label text. */
 .export-button {
   display: inline-flex;
   align-items: center;
@@ -3060,9 +3066,9 @@ button:active::before {
   white-space: nowrap;
 }
 
-/* Currency & display-format settings — same visual language as the
-   onboarding options so the wizard choice and its later Settings twin
-   read as one continuous setting. */
+/* Currency & display-format settings — we deliberately reuse the same
+   visual language as the onboarding options so the wizard choice and its
+   later Settings twin read as one continuous setting. */
 .currency-section {
   display: flex;
   flex-direction: column;
@@ -3620,7 +3626,7 @@ button:active::before {
 }
 
 
-/* Skeleton loading states */
+/* Our skeleton loading states */
 .skeleton {
   background: linear-gradient(
     90deg,
@@ -3947,7 +3953,9 @@ button:active::before {
 }
 
 /* ============================================
-   Chart Components (ECharts)
+   Our chart components (ECharts): card layout,
+   the containers they draw into, and the states
+   that stand in when there's nothing to draw
    ============================================ */
 
 .charts-section {
@@ -3989,7 +3997,8 @@ button:active::before {
   margin: 0 0 0.75rem 0;
 }
 
-/* Chart containers — ECharts renders into these */
+/* Chart containers — ECharts renders into these, so we only set width and
+   a fixed height here; the library owns everything inside. */
 .chart-container {
   width: 100%;
 }
@@ -4006,7 +4015,9 @@ button:active::before {
   height: 220px;
 }
 
-/* Empty / error state cards (whole-card states) */
+/* Empty / error cards where the whole card is the state (chart-empty-card,
+   chart-error-card) rather than a message inside an otherwise populated
+   card. */
 .chart-empty-card,
 .chart-error-card {
   display: flex;
@@ -4025,14 +4036,15 @@ button:active::before {
   margin-bottom: 0.5rem;
 }
 
-/* Error state */
+/* The error state's text */
 .chart-error-text {
   color: var(--text-danger, #ef4444);
   font-size: 0.875rem;
   margin: 0.5rem 0 0;
 }
 
-/* Inline empty/error state (inside a card with its own title) */
+/* Inline empty/error state — we render this inside a card that keeps its
+   own title, so it needs its own min-height and centering. */
 .chart-empty {
   display: flex;
   flex-direction: column;
@@ -4049,7 +4061,9 @@ button:active::before {
   margin: 0.5rem 0 0;
 }
 
-/* Skeleton loading */
+/* Skeleton loading for the chart cards — this is the Suspense fallback
+   Dashboard shows while the lazy ChartsSection chunk arrives; the card is
+   pointer-events off so nobody clicks a chart that isn't there yet. */
 .chart-skeleton-card {
   padding: 1rem;
   pointer-events: none;
@@ -4082,7 +4096,7 @@ button:active::before {
   100% { background-position: -200% 0; }
 }
 
-/* Mobile: single-column */
+/* Mobile: we collapse to a single column and trim the chart heights */
 @media (max-width: 768px) {
   .chart-card-row {
     grid-template-columns: 1fr;
@@ -4101,10 +4115,10 @@ button:active::before {
   }
 }
 
-/* Global reduced-motion guard. The narrow per-component blocks above
+/* Our global reduced-motion guard. The narrow per-component blocks above
    (skeletons) keep their specific static fallbacks; this catch-all stops
    every other animation/transition for users who opt out of motion.
-   Long durations collapse to 0.01ms so animationend events still fire
+   We collapse long durations to 0.01ms so animationend events still fire
    and JS-driven state machines don't stall. */
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -8,20 +8,20 @@ import {
   significantCharsBefore,
 } from '../utils/moneyInput';
 
-// Live-formatted money input.
+// Our live-formatted money input.
 //
-// Presentation-only component: it owns the sanitized DRAFT string needed to
-// render grouped digits while typing, but reports plain numbers upward via
-// onChange(number | null). Nothing formatted ever reaches application state
-// (see DR-0003 in utils/currency.js).
+// We keep it presentation-only: it owns the sanitized DRAFT string it needs
+// to render grouped digits while typing, but reports plain numbers upward
+// through onChange(number | null). Nothing formatted ever reaches
+// application state (see DR-0003 in utils/currency.js).
 //
 // The parent seeds the field with initialValue. Programmatic resets (e.g.
-// switching the form into edit mode) should remount via a changing `key`
-// rather than mutating props mid-edit, so the draft never fights the parent.
+// switching the form into edit mode) have to remount through a changing
+// `key` rather than mutating props mid-edit, or the draft fights the parent.
 const MoneyInput = ({ currency, initialValue = '', onChange, ...rest }) => {
   const [draft, setDraft] = useState(() => sanitizeAmountDraft(initialValue ?? '', currency));
   const inputRef = useRef(null);
-  // Caret position to apply after React commits the reformatted value.
+  // Caret position we apply once React commits the reformatted value.
   const pendingCaret = useRef(null);
 
   useLayoutEffect(() => {
@@ -33,12 +33,12 @@ const MoneyInput = ({ currency, initialValue = '', onChange, ...rest }) => {
 
   const handleChange = (e) => {
     const raw = e.target.value;
-    // Count typed-significant characters (digits + the currency's real
-    // decimal point) up to the caret, then find the same count in the
-    // reformatted string. This is what keeps the caret glued to the digits
-    // the user is editing instead of jumping to the end every time a
-    // grouping separator appears. For VND the dot is only ever a separator,
-    // so it must not count as significant.
+    // We count the typed-significant characters (digits plus the currency's
+    // real decimal point) up to the caret, then find that same count in the
+    // reformatted string — this is what keeps the caret glued to the digits
+    // being edited instead of jumping to the end every time a grouping
+    // separator appears. For VND the dot is only ever a separator, so it
+    // must not count as significant.
     const sigCount = significantCharsBefore(raw, e.target.selectionStart, currency);
     const nextDraft = sanitizeAmountDraft(raw, currency);
     const display = formatAmountDraft(nextDraft, currency);

@@ -3,24 +3,24 @@
 // The v3 upgrade is the only stateful migration in the app: it converts the
 // pre-multi-account layout (global salt/token settings, transactions without
 // accountId) into the namespaced-per-account layout. Breaking it strands real
-// user vaults, so it is exercised against a real IndexedDB (fake-indexeddb)
-// rather than mocks.
+// user vaults, so we run it against a real IndexedDB (fake-indexeddb) rather
+// than mocks.
 import { describe, it, expect, beforeAll } from 'vitest';
 import Dexie from 'dexie';
 import { db } from '../src/db/db';
 
 // Wipe the physical database between scenarios. Dexie.delete resolves only
-// once every open connection has released the DB, so the shared `db` handle
-// must be closed first; it transparently re-opens (and re-runs migrations)
-// on its next operation.
+// once every open connection has released the DB, so we have to close the
+// shared `db` handle first; it then transparently re-opens (and re-runs
+// migrations) on its next operation.
 async function resetDatabase() {
   db.close();
   await Dexie.delete('Basalt');
 }
 
-// Recreate a v2-era database (pre-multi-account) with the exact stores the
-// app declared at that version, so reopening at v4 is forced to run the
-// v3 upgrade — same flow a returning v2 user's browser takes.
+// We recreate a v2-era database (pre-multi-account) with the exact stores the
+// app declared at that version, so reopening at v4 forces it to run the v3
+// upgrade — the same flow a returning v2 user's browser takes.
 async function seedLegacyV2(seed) {
   const legacy = new Dexie('Basalt');
   legacy.version(2).stores({
@@ -32,9 +32,9 @@ async function seedLegacyV2(seed) {
   legacy.close();
 }
 
-// First query on the shared v4 handle after seeding triggers the migration.
-// The handle was explicitly closed by resetDatabase(); Dexie does not
-// transparently reopen in v4, so open it before querying.
+// The first query on the shared v4 handle after seeding is what triggers the
+// migration. resetDatabase() closed that handle explicitly, and Dexie does not
+// transparently reopen in v4, so we open it before querying.
 const runUpgrade = async () => {
   await db.open();
   await db.accounts.toArray();
@@ -69,8 +69,8 @@ describe('v3 migration: single-account vault becomes the "default" account', () 
       .toEqual({ iv: [0], ciphertext: [9] });
     expect((await db.settings.get('passwordSet:default')).value).toBe(true);
 
-    // The un-namespaced originals must be gone — a duplicate would make the
-    // account look uninitialized to first-time-setup detection.
+    // The un-namespaced originals have to be gone — a leftover duplicate
+    // would make the account look uninitialized to first-time-setup detection.
     expect(await db.settings.get('salt')).toBeUndefined();
     expect(await db.settings.get('verificationToken')).toBeUndefined();
     expect(await db.settings.get('passwordSet')).toBeUndefined();
@@ -94,7 +94,7 @@ describe('v3 migration: single-account vault becomes the "default" account', () 
 
 describe('v3 migration: vault with no password set creates no default account', () => {
   // A v2 user who never set a password has nothing to migrate into an
-  // account; creating one anyway would show a phantom "My Account".
+  // account; create one anyway and they'd get a phantom "My Account".
   beforeAll(async () => {
     await resetDatabase();
     await seedLegacyV2(async (legacy) => {
@@ -121,7 +121,8 @@ describe('fresh install: schema is created at v4 without running upgrades', () =
     expect(await db.accounts.toArray()).toEqual([]);
     expect(await db.transactions.toArray()).toEqual([]);
 
-    // The accountId index is the v3+ addition — verify a scoped query works.
+    // The accountId index is the v3+ addition — a scoped query here is how
+    // we verify it is really in place.
     const scoped = await db.transactions.where('accountId').equals('any').toArray();
     expect(scoped).toEqual([]);
   });

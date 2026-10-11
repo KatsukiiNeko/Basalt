@@ -2,9 +2,17 @@ import { useRef } from 'react';
 import Modal from './Modal';
 import { useLanguage } from '../context/LanguageContext';
 
-// Destructive-action confirmation built on the shared Modal primitive.
-// Focus lands on Cancel (the safe action); Escape and backdrop clicks
-// cancel; Tab is trapped inside.
+// Destructive-action confirmation, built on our shared Modal primitive
+// (components/Modal.jsx) so the Tab trap, Escape handling, focus restore
+// and scroll lock come from there instead of being re-wired per dialog.
+//
+// The one thing we own is where focus lands: focusOnOpenSelector points
+// at .confirm-cancel, the safe action, so an impatient Enter presses
+// Cancel rather than whatever destructive thing the caller is confirming.
+// Escape and backdrop clicks both go through onClose, which we wire to
+// onCancel — there is no path through this dialog that confirms without
+// an explicit press of the confirm button. Labels fall back to
+// accounts.cancel / confirm.continue when the caller passes none.
 const ConfirmDialog = ({ title, message, confirmLabel, cancelLabel, onConfirm, onCancel }) => {
   const { t } = useLanguage();
   const cancelRef = useRef(null);

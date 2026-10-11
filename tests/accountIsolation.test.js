@@ -1,7 +1,8 @@
-// Multi-account isolation: each account is an independent encrypted vault.
-// These tests pin the security property that a session for account A can
-// never read account B's rows — both at the query level (Dexie scoping)
-// and at the crypto level (AES-GCM must reject B's key on A's ciphertext).
+// Multi-account isolation: every account is an independent encrypted vault,
+// and this file pins that property — a session for account A can never read
+// account B's rows. We assert it at both layers: Dexie scoping at the query
+// level, and AES-GCM rejecting B's key on A's ciphertext at the crypto
+// level.
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { db } from '../src/db/db';
 import {
@@ -41,7 +42,8 @@ beforeAll(async () => {
   keyA = await deriveKey('password-a', saltA);
   keyB = await deriveKey('password-b', saltB);
 
-  // Independent salts/tokens per account, namespaced by accountId.
+  // Independent salts/tokens per account, namespaced as salt:<id> and
+  // verificationToken:<id> — A and B share nothing but the settings table.
   await db.settings.bulkPut([
     { key: 'salt:' + A, value: Array.from(saltA) },
     { key: 'verificationToken:' + A, value: await createVerificationToken(keyA) },
@@ -96,8 +98,9 @@ describe('crypto-level isolation', () => {
   it('session keys stay per-account in the registry (active vs. by-id lookup)', () => {
     setSessionKey(keyA, A);
     setSessionKey(keyB, B);
-    // Setting B's key makes B active, but A's key must remain resolvable
-    // by its own accountId — the property multi-account UI relies on.
+    // setSessionKey(keyB, B) makes B the active account, but A's key must
+    // stay resolvable by its own accountId — multi-account UI relies on
+    // both lookups working at the same time.
     expect(getSessionKey(A)).toBeDefined();
     expect(getSessionKey(B)).toBeDefined();
     expect(getSessionKey(A)).not.toBe(getSessionKey(B));

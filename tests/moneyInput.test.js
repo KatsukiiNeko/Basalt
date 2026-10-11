@@ -18,8 +18,8 @@ describe('allowsDecimals', () => {
 describe('sanitizeAmountDraft — VND (integer only)', () => {
   it.each([
     ['1000100', '1000100'],
-    ['1.000.100', '1000100'], // pasted formatted text collapses to digits
-    ['12.5', '125'],          // dots stripped for VND (separators only)
+    ['1.000.100', '1000100'], // pasted on-screen text strips its grouping
+    ['12.5', '125'],          // for VND every dot is grouping, not a decimal
     ['abc', ''],
     ['', '']
   ])('%p -> %p', (raw, expected) => {
@@ -30,7 +30,7 @@ describe('sanitizeAmountDraft — VND (integer only)', () => {
 describe('sanitizeAmountDraft — USD (max 2 fraction digits)', () => {
   it('keeps a single decimal point and truncates extra fraction digits', () => {
     expect(sanitizeAmountDraft('12.34', 'USD')).toBe('12.34');
-    expect(sanitizeAmountDraft('12.345', 'USD')).toBe('12.34'); // no rounding surprises mid-typing
+    expect(sanitizeAmountDraft('12.345', 'USD')).toBe('12.34'); // truncate, never round mid-typing
   });
 
   it('collapses stray dots after the first into nothing, never a second dot', () => {
@@ -61,8 +61,8 @@ describe('formatAmountDraft', () => {
   });
 
   it('groups USD integer part and leaves the fraction verbatim while typing', () => {
-    // Fraction stays un-grouped/un-padded mid-edit: "12.5" must not become
-    // "12.50" under the user's caret.
+    // We only regroup the integer part. Padding "12.5" out to "12.50"
+    // mid-edit would fight the user's caret, so the fraction stays as typed.
     expect(formatAmountDraft('12.5', 'USD')).toBe('12.5');
     expect(formatAmountDraft('12345.67', 'USD')).toBe('12,345.67');
     expect(formatAmountDraft('0.', 'USD')).toBe('0.');
@@ -71,13 +71,15 @@ describe('formatAmountDraft', () => {
 
 describe('caret math (significant-character anchoring)', () => {
   it('counts digits + decimal char, ignoring grouping separators', () => {
-    // "1,234,567" has 7 digits but 9 chars; commas are volatile.
+    // "1,234,567" is 9 chars but only 7 significant: grouping commas come
+    // and go on every reformat, so they can't anchor the caret.
     expect(significantCharsBefore('1,234,567', 9, 'USD')).toBe(7);
-    expect(significantCharsBefore('12.5', 4, 'USD')).toBe(4); // '.' counts for USD
+    expect(significantCharsBefore('12.5', 4, 'USD')).toBe(4); // for USD the point counts
   });
 
   it('for VND the dot is ONLY a separator and never anchors the caret', () => {
-    // "1.999" — the dot must not be counted, or carets strand mid-string.
+    // In "1.999" the dot is grouping, not a decimal — count it and the
+    // caret gets stranded behind the separator we just inserted.
     expect(significantCharsBefore('1.999', 5, 'VND')).toBe(4);
     expect(significantCharsBefore('999', 3, 'VND')).toBe(3);
   });
@@ -94,21 +96,24 @@ describe('caret math (significant-character anchoring)', () => {
   });
 
   it('round-trips caret across a VND thousand-boundary reformat (the regression)', () => {
-    // Models handleChange exactly: caret math runs on the POST-keystroke
-    // raw value and selection, not the pre-typing display. Typing "1"
-    // between the digits of "999" (caret was at offset 1):
+    // We model MoneyInput's handleChange exactly: the caret math runs on
+    // the POST-keystroke raw value and selection, not on the pre-typing
+    // display. Here the user types "1" between the digits of "999" with the
+    // caret at offset 1, so raw comes out as "9199".
     const raw = '9199';
-    const sig = significantCharsBefore(raw, 2, 'VND'); // 2 digits before caret
+    const sig = significantCharsBefore(raw, 2, 'VND'); // 2 digits before the caret
     const display = formatAmountDraft(sanitizeAmountDraft(raw, 'VND'), 'VND');
     expect(display).toBe('9.199');
-    // Old dot-counting code returned 2 here — stranding the caret on the
-    // freshly inserted separator instead of after the typed digit.
+    // The bug this guards: the old dot-counting code returned 2 here,
+    // dropping the caret on the freshly inserted separator instead of
+    // after the digit the user just typed.
     expect(caretForSignificantChars(display, sig, 'VND')).toBe(3);
   });
 
   it('keeps the caret glued through repeated keystrokes (simulation)', () => {
-    // Type "1234567" one key at a time into an empty VND field, caret
-    // always at end; every step must land the caret after the last digit.
+    // We type "1234567" one key at a time into an empty VND field with the
+    // caret always parked at the end. Every intermediate reformat has to
+    // map back to a caret sitting after the last digit.
     let raw = '';
     let caret = 0;
     for (const digit of ['1', '2', '3', '4', '5', '6', '7']) {
@@ -141,12 +146,12 @@ describe('parseAmountDraft (display -> stored boundary)', () => {
 
 describe('sanitize -> format -> parse round-trip', () => {
   it('a typed formatted string never leaks separators into stored state', () => {
-    const typed = '1.000.100';           // what a paste or keystrokes produced on screen
+    const typed = '1.000.100';           // what a paste or keystrokes put on screen
     const draft = sanitizeAmountDraft(typed, 'VND');
     const display = formatAmountDraft(draft, 'VND');
 
-    expect(display).toBe('1.000.100'); // presentation
-    expect(draft).toBe('1000100');     // state: plain digits
-    expect(parseAmountDraft(draft)).toBe(1000100); // storage-bound value
+    expect(display).toBe('1.000.100'); // presentation: grouping back on
+    expect(draft).toBe('1000100');     // state: bare digits only
+    expect(parseAmountDraft(draft)).toBe(1000100); // what reaches storage
   });
 });

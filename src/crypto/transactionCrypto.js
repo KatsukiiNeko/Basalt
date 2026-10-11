@@ -1,4 +1,9 @@
-// Verification tokens and per-transaction encrypt/decrypt helpers.
+// Our per-transaction crypto layer: verification tokens that prove a
+// password is right, encrypt/decrypt for rows at rest, and the shape check
+// we run before a transaction is written (services/transactions.js) or
+// imported from a backup (backupService.js). Built on primitives.js only
+// — no DB access, no session state. services/transactions.js reaches past
+// crypto.js to import validateTransactionData straight from here.
 import { encryptData, decryptData, generateIV, constantTimeEquals } from './primitives';
 
 export const VERIFICATION_PLAINTEXT = 'BASALT_VERIFY_v1';
@@ -17,9 +22,11 @@ export async function verifyPassword(key, token) {
     const iv = new Uint8Array(token.iv);
     const ciphertext = new Uint8Array(token.ciphertext);
     const decrypted = await decryptData(ciphertext, key, iv);
-    // Constant-time compare (DR-0002): the sentinel is public today, but
-    // GCM already rejected wrong keys before we get here — this is
-    // defense-in-depth for any future secret-bearing sentinel.
+    // Compare in constant time (DR-0002). A wrong key never gets this far:
+    // AES-GCM authentication rejects it in decryptData and we return false
+    // from the catch below, and the sentinel is public today anyway — so
+    // this is pure defense-in-depth, keeping the check honest if we ever
+    // swap in a secret-bearing sentinel.
     return await constantTimeEquals(decrypted, VERIFICATION_PLAINTEXT);
   } catch {
     return false;

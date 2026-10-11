@@ -10,9 +10,10 @@ import { ThemeProvider } from './context/ThemeContext'
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {
-      // SW registration failing only affects offline caching; the app is
-      // still fully usable online and on re-visits once registration
-      // succeeds. Nothing user-actionable to surface.
+      // A failed registration only costs offline caching: the app still
+      // runs fully online, and a later visit registers successfully once
+      // the browser allows it. Nothing here is user-actionable, so we
+      // swallow the error instead of surfacing something they can't fix.
     });
   });
 }

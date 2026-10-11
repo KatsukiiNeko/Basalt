@@ -1,3 +1,4 @@
-// Vitest setup: provide an in-memory IndexedDB (fake-indexeddb) so Dexie-based
-// modules can run under jsdom, which lacks a real IndexedDB implementation.
+// Our Vitest setup: we hand every test an in-memory IndexedDB (fake-indexeddb)
+// because jsdom ships no real one — without this import the Dexie-based modules
+// would fail the moment they touch the database.
 import 'fake-indexeddb/auto';

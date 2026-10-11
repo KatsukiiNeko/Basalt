@@ -1,11 +1,3 @@
-// Saves a Blob to a destination the user picks.
-//
-// Chromium gets the File System Access API ("save as" dialog with folder
-// choice, remembered per origin); everyone else — and any case where the
-// picker is unavailable or refused — falls back to the classic anchor
-// download into the browser's default downloads folder. Never rejects:
-// callers only care about 'saved' vs 'cancelled'.
-
 const MIME_BY_EXT = {
   '.xlsx': {
     description: 'Excel workbook',
@@ -34,6 +26,11 @@ function anchorDownload(blob, filename) {
 }
 
 /**
+ * Save a blob to disk. We try the File System API first (Chromium lets the
+ * user pick where it lands) and fall back to an anchor download when the
+ * browser has no showSaveFilePicker. Dashboard's handleExport calls this
+ * while the export spinner is still up.
+ *
  * @param {Blob} blob
  * @param {string} filename
  * @returns {Promise<'saved' | 'cancelled'>}
@@ -53,11 +50,13 @@ export async function saveBlob(blob, filename) {
     await writable.close();
     return 'saved';
   } catch (err) {
-    // User dismissed the dialog: report it, write nothing.
+    // The user dismissed the picker — that is a cancel, not a failure, so
+    // we report it and write nothing.
     if (err && err.name === 'AbortError') return 'cancelled';
-    // Anything else (NotAllowedError when a long export outlives Chrome's
-    // ~5s user-activation window, unsupported sandbox, write failure) degrades
-    // to the plain download — better a file in Downloads than a lost export.
+    // Everything else degrades to the plain anchor download: NotAllowedError
+    // when a long export outlives Chrome's ~5s user-activation window, an
+    // unsupported sandbox, a plain write failure. Better a file in Downloads
+    // than a lost export.
     // ponytail: anchor fallback loses folder choice, revisit only if the
     // NotAllowedError path starts firing in practice.
     anchorDownload(blob, filename);

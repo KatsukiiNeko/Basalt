@@ -1,5 +1,5 @@
-// Live money-input primitives shared by MoneyInput (and exercised directly
-// by its unit tests).
+// Live money-input primitives shared by MoneyInput.jsx (and exercised
+// directly by tests/moneyInput.test.js).
 //
 // Separation of concerns (extends DR-0003):
 //   - The parent component owns the DRAFT value: a sanitized string of
@@ -15,19 +15,20 @@ export function allowsDecimals(currency) {
   return DECIMAL_CHAR[currency] != null;
 }
 
-// Normalize raw keystrokes into a canonical draft: digits only, a single
-// decimal point where the currency supports one (',' accepted as an alias
-// for vi-VN keyboard layouts), at most two fraction digits, and no leading
-// zero runs. A lone leading zero survives so "0.5" stays typeable in USD.
+// Raw keystrokes -> canonical draft: digits only, a single decimal point
+// where the currency supports one (',' is accepted as an alias for vi-VN
+// keyboard layouts), at most two fraction digits, and no leading-zero runs.
+// We deliberately leave a lone leading zero alone so "0.5" stays typeable
+// in USD.
 export function sanitizeAmountDraft(raw, currency) {
   const normalized = String(raw).replace(/,/g, '.').replace(/[^\d.]/g, '');
   let draft = allowsDecimals(currency) ? normalized : normalized.replace(/\./g, '');
 
   const dotIndex = draft.indexOf('.');
   if (dotIndex !== -1) {
-    // Everything after the FIRST dot is fraction territory: later dots are
-    // stray keystrokes/paste artifacts, not thousands separators, and would
-    // otherwise render as a second dot inside the field.
+    // Everything after the FIRST dot is fraction territory — we read later
+    // dots as stray keystrokes/paste artifacts, not thousands separators,
+    // because they'd otherwise render as a second dot inside the field.
     draft = `${draft.slice(0, dotIndex)}.${draft.slice(dotIndex + 1).replace(/\./g, '').slice(0, 2)}`;
   }
 
@@ -35,7 +36,11 @@ export function sanitizeAmountDraft(raw, currency) {
 }
 
 // Render a draft for the screen: integer part digit-grouped, fraction part
-// verbatim. Purely presentational — the output is never persisted.
+// verbatim. The grouping comes from groupDigits in ./currency — the same
+// helper formatMoney uses — which is our coupling to the display side: this
+// field and every rendered amount in the app agree on separators because
+// they share one implementation. Purely presentational: this output is
+// never persisted.
 export function formatAmountDraft(draft, currency) {
   const dotIndex = draft.indexOf('.');
   if (dotIndex === -1) return groupDigits(draft, currency);
@@ -44,13 +49,14 @@ export function formatAmountDraft(draft, currency) {
 
 // Caret math operates on "significant" characters — digits, plus the
 // decimal point for currencies that have one — because grouping separators
-// appear and disappear as the draft grows. Comparing significant-char
-// counts before/after reformatting keeps the caret anchored to the
-// characters the user actually typed instead of to volatile offsets in the
-// formatted string. For integer-only currencies (VND) a dot is ALWAYS a
-// volatile separator and must never anchor the caret — counting it would
-// strand the cursor one character short every time the value crosses a
-// thousand boundary.
+// appear and disappear as the draft grows. MoneyInput.jsx counts them in
+// the raw keystroke first (significantCharsBefore), then maps that count
+// back onto the reformatted display (caretForSignificantChars); comparing
+// counts instead of raw offsets keeps the caret on the characters the user
+// actually typed rather than on volatile positions in the formatted string.
+// For integer-only currencies (VND) a dot is ALWAYS a volatile separator
+// and must never anchor the caret — counting it would strand the cursor one
+// character short every time the value crosses a thousand boundary.
 const isSignificant = (ch, currency) =>
   /\d/.test(ch) || (allowsDecimals(currency) && ch === '.');
 
@@ -74,8 +80,10 @@ export function caretForSignificantChars(text, count, currency) {
   return text.length;
 }
 
-// Draft -> stored numeric value. Returns null for an empty/invalid draft so
-// callers can route to their own validation messaging.
+// Draft -> stored numeric value: the display-to-state boundary, and the
+// one input MoneyInput hands to its onChange. Returns null for an
+// empty/invalid draft so callers can route to their own validation
+// messaging.
 export function parseAmountDraft(draft) {
   if (!draft) return null;
   const parsed = Number(draft);

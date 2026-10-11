@@ -1,5 +1,6 @@
-// Service-level tests for the transaction application service — the layer
-// every UI writer goes through. Runs against real fake-indexeddb.
+// Service-level tests for src/services/transactions — the layer every UI
+// writer hands its plain records to. Runs against real fake-indexeddb, so
+// the Dexie accountId scoping and the ciphertext rows are the real thing.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from '../src/db/db';
 import {
@@ -41,7 +42,9 @@ describe('loadAllDecrypted', () => {
     await seedSession();
     await addTransaction(TX, ACCT);
 
-    // A row encrypted with a foreign key: present in the table, undecryptable.
+    // We plant a row encrypted under a foreign key: it sits in the table
+    // but this session's key can't open it — the corrupt-row case
+    // loadAllDecrypted has to count rather than crash on.
     const foreignKey = await deriveKey('other', generateSalt(), FAST);
     const bad = await encryptTransactionForStorage(TX, foreignKey);
     bad.accountId = ACCT;
@@ -50,8 +53,9 @@ describe('loadAllDecrypted', () => {
     const { transactions, skippedCount } = await loadAllDecrypted(ACCT);
     expect(transactions).toHaveLength(1);
     expect(skippedCount).toBe(1);
-    // The record History's inline editor receives must carry both identity
-    // fields so it can be passed straight back to updateTransaction.
+    // The record we hand History's inline editor has to carry both
+    // identity fields, so it can go straight back into updateTransaction
+    // without us reconstructing anything.
     expect(transactions[0].id).toBeDefined();
     expect(transactions[0].accountId).toBe(ACCT);
     expect(transactions[0].amount).toBe(400);
@@ -63,8 +67,9 @@ describe('updateTransaction — account-scope preservation', () => {
     await seedSession();
     const id = await addTransaction(TX, ACCT);
 
-    // History's inline editor passes the decrypted record; pre-decrypt
-    // records from older sessions may lack accountId entirely.
+    // What History's inline editor hands us: the decrypted record, which
+    // carries no accountId (it lives on the encrypted wrapper), and rows
+    // written before that flow existed may lack it entirely.
     const { transactions } = await loadAllDecrypted(ACCT);
     const decrypted = transactions[0];
     const stripped = { date: decrypted.date, type: decrypted.type, category: decrypted.category, amount: 999, note: decrypted.note };
@@ -72,18 +77,18 @@ describe('updateTransaction — account-scope preservation', () => {
     await updateTransaction(id, stripped, undefined);
 
     const scoped = await db.transactions.where('accountId').equals(ACCT).toArray();
-    expect(scoped).toHaveLength(1); // not dropped out of scope
+    expect(scoped).toHaveLength(1); // the row never dropped out of its scope
     expect(scoped[0].accountId).toBe(ACCT);
-    expect(scoped[0].id).toBe(id);   // updated in place, not duplicated
+    expect(scoped[0].id).toBe(id);   // same row updated in place, not a duplicate
   });
 
   it('rejects writes claiming a foreign account (no session for it)', async () => {
     await seedSession();
     const id = await addTransaction(TX, ACCT);
 
-    // A stale record claiming another account must not silently re-scope
-    // the row: there is no session key for that account, so the write is
-    // refused outright.
+    // A stale record pointing at another account must never quietly move
+    // the row: we hold no session key for that account, so the write is
+    // refused outright and the row keeps its original owner.
     await expect(
       updateTransaction(id, { ...TX, amount: 50 }, 'other-account')
     ).rejects.toThrow();
@@ -103,11 +108,11 @@ describe('computeSummary', () => {
       mk('2026-04-05', 'expense', 300),
       mk('2026-03-20', 'expense', 100),
     ];
-    const summary = computeSummary(txs, 2026, 3); // April 2026
+    const summary = computeSummary(txs, 2026, 3); // months are 0-based: 3 = April
 
     expect(summary.monthIncome).toBe(1000);
     expect(summary.monthExpenses).toBe(300);
-    expect(summary.totalBalance).toBe(600); // all-time income - expenses
+    expect(summary.totalBalance).toBe(600); // all-time income - expenses, not April-only
     expect(summary.monthsWithData.has('2026-04')).toBe(true);
     expect(summary.monthsWithData.has('2026-03')).toBe(true);
     expect(summary.monthsWithData.size).toBe(2);

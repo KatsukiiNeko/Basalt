@@ -1,10 +1,17 @@
 import { Component } from 'react';
 
-// Root error boundary. A render crash must never white-screen a PWA that
-// may hold the only copy of a user's financial history — the fallback
-// keeps the vault-lock entry point reachable so recovery (reload, lock,
-// re-unlock) is always one tap away. Details are logged for developers;
-// the user copy never includes error internals or any crypto material.
+// Our root error boundary — main.jsx wraps everything (all three
+// providers) in it, so it renders outside Theme/Language/Currency and
+// cannot call t() or use a themed component: the fallback ships hardcoded
+// English on plain CSS tokens. The paired note lives on .error-boundary in
+// src/index.css.
+//
+// A render crash must never white-screen a PWA that may hold the only
+// copy of a user's financial history, so the fallback stays deliberately
+// minimal — one message, one Reload button — and keeps recovery (reload,
+// lock, re-unlock) one tap away. Details go to console.error for
+// developers; the user copy never includes error internals or any crypto
+// material.
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -16,9 +23,11 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // Diagnostics for `npm run dev`/inspection — the production build strips
-    // console via terser drop_console, where the boundary UI itself is the
-    // only user-facing signal. The thrown value never enters that copy.
+    // Dev diagnostics for `npm run dev` and post-mortem inspection. In the
+    // production build terser's drop_console strips this (see
+    // vite.config.js), so there the boundary UI below is the only
+    // user-facing signal — and whatever was thrown never enters that copy,
+    // only the console.
     console.error('[Basalt] render crash:', error, info?.componentStack);
   }
 

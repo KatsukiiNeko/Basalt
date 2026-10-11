@@ -6,15 +6,16 @@ const FOCUSABLE = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ');
 
-// Shared modal/dialog primitive: overlay + panel + focus management.
-// Every layered surface (Settings slide-over, ConfirmDialog, future sheets)
-// uses this so keyboard behavior is correct once, everywhere:
+// Our shared modal/dialog primitive: overlay + panel + focus management.
+// Every layered surface we stack — the Settings slide-over, ConfirmDialog,
+// future sheets — goes through this, so keyboard behavior is right once,
+// everywhere:
 //  - Tab is trapped inside the dialog (background content is inert)
 //  - Escape closes
 //  - focus is restored to the pre-dialog element on close
 //  - overlay scroll is locked
-// The trap matters beyond convenience: a background tab stop can put the
-// Enter key on invisible form controls — destructive for a finance app.
+// The trap is not a convenience: a background tab stop can put the Enter
+// key on invisible form controls — destructive for a finance app.
 export default function Modal({
   isOpen,
   onClose,
@@ -68,9 +69,9 @@ export default function Modal({
     document.body.style.overflow = 'hidden';
     document.addEventListener('keydown', handleKeyDown, true);
 
-    // Initial focus lands inside the dialog. A specific element wins
-    // (e.g. the safe-action button); otherwise the first focusable —
-    // never the panel container itself, which would be skipped by Tab.
+    // We put initial focus inside the dialog: the requested element wins
+    // (focusOnOpenSelector, e.g. the safe-action button); otherwise the
+    // first focusable — never the panel container itself, which Tab skips.
     const panel = panelRef.current;
     if (panel) {
       const target = focusOnOpenSelector
@@ -86,8 +87,8 @@ export default function Modal({
         restoreRef.current.focus();
       }
     };
-    // handleKeyDown is stable via useCallback(onClose); selectors are
-    // static per usage site.
+    // We only re-run on isOpen: handleKeyDown is stable via
+    // useCallback(onClose), and the selectors are static per usage site.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 

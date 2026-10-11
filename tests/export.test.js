@@ -1,6 +1,8 @@
 // Workbook-format and service tests for the .xlsx export (DR-0009).
-// Runs against real fake-indexeddb for the service path, and round-trips
-// generated files through fflate to assert the actual OOXML bytes.
+// The service path runs against real fake-indexeddb, and we round-trip the
+// generated file through fflate so the assertions hit the actual OOXML
+// bytes Excel opens — including the XLSX hard limits (1,048,576 rows,
+// 32,767 chars per cell) — not just our in-memory sheet model.
 /* global process */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { unzipSync } from 'fflate';
@@ -88,14 +90,16 @@ describe('workbook primitives', () => {
     try {
       for (const tz of ['Asia/Bangkok', 'America/Los_Angeles']) {
         process.env.TZ = tz;
-        // Guard: prove the timezone actually took effect (local midnight
-        // would differ from UTC midnight if it did).
+        // Guard: prove the TZ swap took effect. If local midnight ever
+        // equals UTC midnight here, we are still in the runner's default
+        // zone and this loop is testing nothing.
         expect(new Date(2026, 3, 1).getTime()).not.toBe(Date.UTC(2026, 3, 1));
 
         const cell = dateCell('2026-04-01');
         expect(cell.type).toBe(Date);
         expect(cell.value.getTime()).toBe(Date.UTC(2026, 3, 1));
-        // convertDateToSerialNumber must yield an exact integer serial.
+        // write-excel-file's convertDateToSerialNumber has to turn this
+        // into an exact integer serial, never a fractional one.
         const serial = cell.value.getTime() / 86400000 + 25569;
         expect(Number.isInteger(serial)).toBe(true);
       }
@@ -140,11 +144,12 @@ describe('buildSheets', () => {
         expect(column.width).toBeLessThanOrEqual(50);
       }
     }
-    // Autofilter everywhere except Summary's metric pairs.
+    // Summary is label/value metric pairs, so we give it no autofilter;
+    // the three data sheets get one, sized to their real extents.
     expect(sheets[0].autoFilterRef).toBeUndefined();
-    expect(sheets[1].autoFilterRef).toBe('A1:E4'); // 3 txns + header, 5 cols
+    expect(sheets[1].autoFilterRef).toBe('A1:E4'); // header + 3 txns, 5 cols
     expect(sheets[2].autoFilterRef).toBe('A1:F2');
-    expect(sheets[3].autoFilterRef).toBe('A1:D3'); // Food + Salary rows
+    expect(sheets[3].autoFilterRef).toBe('A1:D3'); // header + Food and Salary
   });
 
   it('sorts transactions date-ascending and signs amounts (income +, expense -)', () => {
@@ -152,7 +157,7 @@ describe('buildSheets', () => {
     const dates = rows.slice(1).map((row) => row[0].value.toISOString().slice(0, 10));
     expect(dates).toEqual(['2026-03-20', '2026-04-02', '2026-04-05']);
     const amounts = rows.slice(1).map((row) => row[3].value);
-    expect(amounts).toEqual([-100000, 1000000, -300000]); // scaled VND
+    expect(amounts).toEqual([-100000, 1000000, -300000]); // scaled VND, signed
     expect(rows[1][1].value).toBe('Expense');
     expect(rows[2][1].value).toBe('Income');
   });
@@ -166,7 +171,7 @@ describe('buildSheets', () => {
     ];
     const summary = computeSummary(transactions, 2026, 3);
     const trend = aggregateMonthlyTrend(transactions);
-    const scale = (v) => v * 1000; // VND scaled display mode
+    const scale = (v) => v * 1000; // VND scaled mode: stored thousands
 
     expect(summaryValue(sheets, 'All-time income')).toBe(scale(trend.income.reduce((a, b) => a + b, 0)));
     expect(summaryValue(sheets, 'All-time expenses')).toBe(scale(trend.expense.reduce((a, b) => a + b, 0)));
@@ -195,13 +200,14 @@ describe('buildSheets', () => {
     });
     const rows = sheets[2].data;
     expect(rows).toHaveLength(3);
-    // Sorted by createdAt: active first, other second.
+    // Sorted by createdAt, so the active account (2026-01-05) leads and
+    // the other account (2026-02-01) follows.
     expect(rows[1][0].value).toBe('Export Acct');
     expect(rows[1][2].value).toBe(3);
-    expect(rows[1][3].value).toBe(1000000); // active account: all-time income 1000 * 1000 (scaled)
+    expect(rows[1][3].value).toBe(1000000); // active account: all-time income 1000 * 1000 (scaled VND)
     expect(rows[2][0].value).toBe('Other');
     expect(rows[2][2].value).toBe(7);
-    expect(rows[2][3]).toBeNull(); // no session key for other accounts
+    expect(rows[2][3]).toBeNull(); // no session key for other accounts, money stays null
     expect(rows[2][5]).toBeNull();
   });
 });
@@ -288,8 +294,8 @@ describe('round-trip (unzip the actual file)', () => {
     const workbook = decode(files['xl/workbook.xml']);
     const names = [...workbook.matchAll(/<sheet [^>]*name="([^"]+)"/g)].map((m) => m[1]);
     expect(names).toEqual(['Summary', 'Transactions', 'Accounts', 'Categories']);
-    // First sheet active: workbookView exists (activeTab defaults to 0)
-    // and sheet1 carries tabSelected="1".
+    // We want Summary open on launch: workbookView must exist (activeTab
+    // defaults to 0) and sheet1 has to carry tabSelected="1".
     expect(workbook).toContain('<workbookView');
     expect(decode(files['xl/worksheets/sheet1.xml'])).toContain('tabSelected="1"');
   });
@@ -311,10 +317,11 @@ describe('round-trip (unzip the actual file)', () => {
 
   it('writes true date cells (integer serial), signed amounts, and VND format', () => {
     const sheet2 = decode(files['xl/worksheets/sheet2.xml']);
-    const serial = Date.UTC(2026, 3, 1) / 86400000 + 25569; // 2026-04-01
+    const serial = Date.UTC(2026, 3, 1) / 86400000 + 25569; // Excel serial for 2026-04-01
     expect(Number.isInteger(serial)).toBe(true);
     expect(sheet2).toContain(`<v>${serial}</v>`);
-    // expense 400 VND-scaled -> -400000, income 5000000 -> 5000000000.
+    // Signs and scaling land in the file: expense 400 (VND scaled) becomes
+    // -400000, income 5000000 becomes 5000000000.
     expect(sheet2).toContain('<v>-400000</v>');
     expect(sheet2).toContain('<v>5000000000</v>');
     const styles = decode(files['xl/styles.xml']);
@@ -358,7 +365,7 @@ describe('round-trip (unzip the actual file)', () => {
       expect(Array.from(bytes).some((b) => b < 0x20 && b !== 0x09 && b !== 0x0a && b !== 0x0d)).toBe(false);
     }
     const shared = decode(canaryFiles['xl/sharedStrings.xml']);
-    expect(shared).toContain('Category'); // \x00 stripped, text kept
-    expect(shared).toContain('abc');      // \x00 and \x1F stripped
+    expect(shared).toContain('Category'); // \x00 stripped, rest of the word kept
+    expect(shared).toContain('abc');      // \x00 and \x1F stripped out entirely
   });
 });

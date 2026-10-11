@@ -20,8 +20,8 @@ import {
   setActiveAccountId
 } from '../src/crypto/crypto';
 
-// Low iteration count keeps PBKDF2-derived-key tests fast; the default value
-// itself is pinned separately below.
+// We derive at 1000 iterations so every key-based test stays fast; the
+// production default is asserted on its own further down.
 const FAST_ITERATIONS = 1000;
 
 describe('PBKDF2_ITERATIONS constant', () => {
@@ -127,7 +127,8 @@ describe('transaction storage format', () => {
     const key = await deriveKey('pw', generateSalt(), FAST_ITERATIONS);
     const stored = await encryptTransactionForStorage(tx, key);
 
-    // Stored shape: base64-free plain arrays, no plaintext leakage.
+    // Stored shape: plain number arrays for iv/data (no base64 anywhere),
+    // and no plaintext leaking out of the ciphertext.
     expect(stored).toHaveProperty('iv');
     expect(stored).toHaveProperty('data');
     expect(JSON.stringify(stored)).not.toContain('Food');
@@ -171,8 +172,9 @@ describe('validateTransactionData', () => {
 });
 
 describe('v1 backup restore (pure crypto path)', () => {
-  // restoreBackup() derives keys with the production default (600k), so
-  // fixtures MUST be built with the same iteration count or GCM will reject.
+  // restoreBackup() derives at the production default (600k) internally,
+  // so our fixtures have to be built with that same iteration count or GCM
+  // rejects the decrypt.
   const PROD_ITERATIONS = PBKDF2_ITERATIONS;
 
   it('restores a v1-format backup built with the same primitives', async () => {
@@ -241,7 +243,7 @@ describe('session key registry', () => {
     expect(getSessionKey('acct-b')).toBe(keyB);
     expect(getSessionKey('acct-a')).toBe(keyA);
 
-    clearSessionKey(); // clears active account (acct-b)
+    clearSessionKey(); // no arg: clears the active account only (acct-b here)
     expect(getSessionKey('acct-b')).toBeNull();
     expect(getSessionKey('acct-a')).toBe(keyA);
 
@@ -253,7 +255,7 @@ describe('session key registry', () => {
   it('getSessionKey falls back to active account id', () => {
     const key = {};
     setActiveAccountId('acct-x');
-    setSessionKey(key); // no explicit id -> uses active
+    setSessionKey(key); // no id passed -> registered under the active account
     expect(getSessionKey()).toBe(key);
   });
 

@@ -1,5 +1,21 @@
-// Backup creation, parsing, restore, and re-encryption. Owns all DB access
-// for backup flows; pure crypto lives in primitives.js.
+// Backup creation, parsing, restore, and re-encryption. We keep all DB
+// access for backup flows here; pure crypto stays in primitives.js and
+// row-level encrypt/decrypt plus validateTransactionData come from
+// transactionCrypto.js.
+//
+// Two generations sit side by side:
+//   createBackup / restoreBackup        — v1: one password over every
+//                                         transaction in the DB, no
+//                                         account. Nothing in src calls
+//                                         these any more (createBackup has
+//                                         no callers at all; restoreBackup
+//                                         survives in tests/crypto.test.js).
+//   createSecureBackup / parseSecureBackup /
+//   restoreSecureBackup                 — v3: per-account, password-
+//                                         derived key, re-encrypted under
+//                                         the target account's session key
+//                                         on restore. Dashboard imports
+//                                         these through crypto.js.
 import { db } from '../db/db';
 import {
   deriveKey,
@@ -81,7 +97,9 @@ export async function createSecureBackup(password, accountId) {
       }
     } catch {
       // One corrupt row must not abort the whole backup, but a silent skip
-      // would hide data loss — the count is surfaced in the return metadata.
+      // would hide data loss — skippedCount is how the caller learns how
+      // many rows never made it into the file (the contract
+      // tests/secureBackup.test.js pins as DR-0004).
       skippedCount++;
     }
   }
@@ -113,7 +131,9 @@ export async function createSecureBackup(password, accountId) {
     iterations: PBKDF2_ITERATIONS,
     accountName: account ? account.name : 'Unknown',
     timestamp: new Date().toISOString(),
-    // Rows that failed decryption/validation and are absent from the backup.
+    // Rows that failed decryption/validation — absent from this backup,
+    // and deliberately part of the file's metadata so a silent gap in the
+    // export can't happen.
     skippedCount
   };
 }

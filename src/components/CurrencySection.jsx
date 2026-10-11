@@ -2,15 +2,15 @@ import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { formatMoney } from '../utils/currency';
 
-// The example uses a canonical amount large enough to expose the display
-// difference between modes; it is NOT a stored value.
+// We render the example with a canonical amount large enough to expose the
+// display difference between modes; it is NOT a stored value.
 const EXAMPLE_STORED = 1250000;
 
-// Currency + VND display-format settings with a live-updating example.
-// Replaces the bare USD/VND flag toggle: the display-format distinction
+// Our currency + VND display-format settings, with a live-updating example.
+// This replaced the bare USD/VND flag toggle: the display-format distinction
 // (Full VND vs Thousand VND) is the setting users actually need to see,
 // and the live example makes the choice self-explanatory (brief §7).
-// Stored values are never touched — only presentation changes (DR-0003).
+// We never touch stored values — only presentation changes (DR-0003).
 const CurrencySection = () => {
   const { currency, setCurrency, vndDisplayMode, setVndDisplayMode } = useCurrency();
   const { t } = useLanguage();

@@ -24,16 +24,17 @@ const Forecast = ({ currentBalance = 0, selectedMonth, selectedYear, transaction
           setCorrectionFactor(stored.value);
         }
       } catch {
-        // Forecast correction is a per-account preference, not vault data —
-        // an unreadable value just means this month's default forecast.
+        // We treat the forecast correction as a per-account preference, not
+        // vault data — an unreadable value just means this month's default
+        // forecast.
       }
     };
     loadCorrection();
   }, [correctionKey]);
 
-  // Derived during render: the forecast is a pure function of the shared
-  // vault data + the correction, so re-computing in an effect would only add
-  // a flash of stale state.
+  // We derive this during render: the forecast is a pure function of the
+  // shared vault data + the correction, so re-computing in an effect would
+  // only add a flash of stale state.
   const forecastData = useMemo(() => {
     const currentDate = new Date(selectedYear, selectedMonth, 1);
     return calculateForecast(transactions, currentBalance, currentDate, correctionFactor);
@@ -63,8 +64,9 @@ const Forecast = ({ currentBalance = 0, selectedMonth, selectedYear, transaction
         await db.settings.put({ key: correctionKey, value: newCorrection });
         setCorrectionFactor(newCorrection);
       } catch {
-        // A correction is a preference, not vault data — failing to persist
-        // it still leaves the model-based forecast intact for this session.
+        // Same story on write: a correction is a preference, not vault
+        // data — failing to persist it still leaves the model-based
+        // forecast intact for this session.
       }
     }
 

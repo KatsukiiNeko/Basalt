@@ -79,9 +79,12 @@ const PasswordManager = ({ onPasswordChange }) => {
       setIsLoading(true);
 
       try {
-        // Shared rekey routine (services/auth). Unlike the pre-V2 inline copy
-        // it aborts on the first undecryptable row instead of destroying the
-        // vault on corruption.
+        // changePassword is our shared rekey routine in services/auth.js:
+        // verify the old password, decrypt every row, re-encrypt under the
+        // new key. Unlike our pre-V2 inline copy, it aborts on the first
+        // undecryptable row instead of destroying the vault on corruption —
+        // the rewrite transaction never starts, so the existing rows are
+        // still there when it throws.
         await changePassword(accountId, currentPassword, newPassword);
       } catch (err) {
         if (err?.message === 'WRONG_PASSWORD') {

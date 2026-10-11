@@ -14,9 +14,9 @@ import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from './LanguageToggle';
 import ThemeToggle from './ThemeToggle';
 
-// Unlock surfaces the same brute-force defenses the backup flow already
+// Unlock runs on the same brute-force defenses the backup flow already
 // uses (triple-store lockout, escalating PBKDF2, PoW, session hard cap) —
-// previously it ran a weaker parallel inline system.
+// before V2 it ran a weaker parallel inline system of its own.
 
 const LockScreen = ({ accountId, onUnlock, onBack }) => {
   const [password, setPassword] = useState('');
@@ -41,15 +41,15 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
         const account = await db.accounts.get(accountId);
         if (account) setAccountDisplayName(account.name);
       } catch {
-        // Name is cosmetic; the unlock flow must proceed without it.
+        // The name is cosmetic; the unlock flow has to proceed without it.
       }
 
       try {
         const { isFirstTime } = await fetchAccountAuthState(accountId);
         if (isFirstTime) setIsFirstTime(true);
       } catch {
-        // If auth settings are unreadable the unlock path below surfaces
-        // the corruption explicitly; nothing to do here.
+        // If the auth settings are unreadable, the unlock path below
+        // surfaces the corruption explicitly — nothing to do here.
       }
 
       try {
@@ -61,8 +61,8 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
         const state = await getPwdLockoutState(accountId);
         setFailedAttempts(state.failedAttempts);
       } catch {
-        // A lockout-engine failure must not block presenting the unlock
-        // form; the engine writes still take effect on the next attempt.
+        // A lockout-engine failure must never block the unlock form; the
+        // engine's own writes still take effect on the next attempt.
       }
     };
 
@@ -75,8 +75,9 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
         const currentTime = Date.now();
         setNow(currentTime);
         if (currentTime >= lockoutEndTime) {
-          // The lockout engine owns persistence; expiry here is purely a
-          // countdown display state — the next attempt re-checks the engine.
+          // We don't persist expiry here — the lockout engine owns that, so
+          // this is purely a countdown display and the next attempt
+          // re-checks the engine.
           setIsLockedOut(false);
           setLockoutEndTime(null);
         }
@@ -108,7 +109,8 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
       return;
     }
 
-    // Pre-attempt gate: lockout tiers, session cap, and escalated PBKDF2.
+    // Pre-attempt gate: lockout tiers, session cap, and escalated PBKDF2 —
+    // the shared engine answers before we spend any PBKDF2 work here.
     const gate = await checkPwdLockout(accountId);
     if (gate.locked) {
       if (gate.reason === 'session_limit') {
@@ -123,8 +125,9 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
 
     const preState = await getPwdLockoutState(accountId);
 
-    // Repeated failures must cost real work: proof-of-work from the 10th
-    // attempt in the session, same escalating difficulty as backup restore.
+    // Repeated failures have to cost real work: we require proof-of-work
+    // from the 10th attempt in the session, at the same escalating
+    // difficulty the backup restore flow uses.
     const pow = getPoWChallenge(accountId, preState.failedAttempts);
     if (pow) {
       setIsUnlocking(true);
@@ -142,10 +145,10 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
       const { isFirstTime } = await fetchAccountAuthState(accountId);
 
       if (!isFirstTime) {
-        // Verification always derives at the vault's stored iteration count —
-        // escalation here would break legitimate unlocks (the stored token
-        // can only be decrypted by the exact key). Attackers pay through
-        // the tier lockouts, session cap, and PoW above instead.
+        // We always derive at the vault's stored iteration count here:
+        // escalating would break legitimate unlocks (the stored token can
+        // only be decrypted by the exact key). Attackers pay through the
+        // tier lockouts, session cap, and PoW above instead.
         const attempt = await unlockAttempt(accountId, password);
 
         if (attempt.isValid) {
@@ -155,11 +158,11 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
           setIsUnlocking(true);
 
           if (attempt.storedIterations < PBKDF2_ITERATIONS) {
-            // Old vaults upgrade to the current standard on unlock; the
-            // rekey aborts (never partially applies) if any row is corrupt.
+            // Old vaults move up to the current standard on unlock; the
+            // rekey aborts (never half-applies) if any row is corrupt.
             upgradePbkdf2(accountId, attempt.key, password).catch(() => {
               // A failed upgrade leaves the vault on the old iterations —
-              // still fully usable, upgraded on a later session.
+              // still fully usable, upgraded in a later session.
             });
           }
 
@@ -178,7 +181,8 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
           setPassword('');
         }
       } else {
-        // First-time setup: derive fresh salt + token at the current standard.
+        // First-time setup: we derive a fresh salt + token at the current
+        // standard.
         await setupPassword(accountId, password);
         setPassword('');
         setIsUnlocking(true);

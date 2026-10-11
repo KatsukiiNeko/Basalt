@@ -15,15 +15,16 @@ import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { saveBlob } from '../utils/saveFile';
 
-// ECharts (~600 KB minified) is the single largest dependency and only the
-// dashboard's chart panel needs it. Splitting it keeps the unlock -> vault
-// critical path small; the fallback keeps layout stable while it streams in.
+// ECharts (~600 KB minified) is our single largest dependency and only the
+// dashboard's chart panel needs it, so we import ChartsSection as a lazy
+// chunk: that keeps the unlock -> vault critical path small, and the
+// Suspense fallback below holds the layout steady while it streams in.
 const ChartsSection = lazy(() => import('./ChartsSection'));
 import SettingsPanel from './SettingsPanel';
 
-// Splits formatMoney output into major/minor parts for the hero display.
+// Split formatMoney output into major/minor parts for the hero display.
 // formatMoney appends a currency suffix (" VND" / " USD"), so the minor
-// part must be matched inside the numeric body, never against the suffix.
+// part has to be matched inside the numeric body, never against the suffix.
 const formatBalanceParts = (amount, formatCurrency) => {
   const formatted = formatCurrency(amount);
   const body = formatted.replace(/ (VND|USD)$/, '');
@@ -58,18 +59,19 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
         if (account) setAccountName(account.name);
       } catch {
         // The account row is metadata only — an unreadable name degrades to
-        // the empty string, never a broken dashboard.
+        // the empty string rather than taking the whole dashboard down.
       }
     };
     loadAccount();
   }, [accountId]);
 
-  // Single decrypted load per (account, refreshKey). Children receive
-  // plain records — History/Forecast/ChartsSection no longer each decrypt
-  // the full table on their own (three redundant passes per refresh).
+  // Our single decrypt pass for this screen: one load per (account,
+  // refreshKey), with History/Forecast/ChartsSection reading the plain
+  // records it returns. Before this hook each of those panels decrypted the
+  // full table itself, so one save meant three redundant passes per refresh.
   const vault = useVaultData(accountId, refreshKey);
-  // Stable empty array keeps useMemo dependencies identity-stable across
-  // renders while the vault is still loading.
+  // While the vault is still loading we hand children one stable empty
+  // array — a fresh [] on every render would churn their useMemo deps.
   const transactions = useMemo(
     () => (vault.status === 'ready' ? vault.transactions : []),
     [vault]
@@ -95,8 +97,8 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
       await db.accounts.update(accountId, { name: trimmed });
       setAccountName(trimmed);
     } catch {
-      // Rename failing leaves the old name in place; the edit simply didn't
-      // take. The user sees the previous name and can retry.
+      // A failed rename leaves the old name in place — the edit simply
+      // didn't take, so the user still sees the previous name and can retry.
     }
     setEditingName(false);
   };
@@ -111,11 +113,14 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
   };
 
   // History's inline editors save through the transaction service; a save or
-  // delete bumps the shared vault so every panel stays consistent.
+  // delete bumps refreshKey so the shared vault reloads and every panel on
+  // this screen re-reads the same data.
   const handleHistoryEdited = () => setRefreshKey(k => k + 1);
 
-  // Shared download plumbing for every file this screen produces (backup
-  // JSON and exported .xlsx): object URL in, anchor click, URL revoked.
+  // Download plumbing for the files this screen produces (backup JSON and
+  // the exported .xlsx): object URL in, anchor click, URL revoked.
+  // downloadBackup calls this directly; the export runs the same trick out
+  // of saveBlob in utils/saveFile, behind Chromium's destination dialog.
   const downloadBlob = (blob, filename) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -132,10 +137,10 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
     downloadBlob(blob, `basalt-${suffix}-${new Date().toISOString().split('T')[0]}.json`);
   };
 
-  // The XLSX writer is a lazy chunk (DR-0008/DR-0009): it loads only on
-  // click and the service worker precaches it for offline exports. The
-  // destination dialog (Chromium) or default-download fallback runs here,
-  // while the export spinner is still up.
+  // The XLSX writer ships as a lazy chunk (DR-0008/DR-0009): we import it
+  // only on click, and the service worker precaches it so exports still work
+  // offline. The destination dialog (Chromium) or the default-download
+  // fallback runs here, while the export spinner is still up.
   const handleExport = async () => {
     const { exportWorkbook } = await import('../services/exportService');
     const result = await exportWorkbook({ accountId, currency, vndDisplayMode });
@@ -174,9 +179,9 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
     });
   };
 
-  // Reads a backup file and routes it by version: v3 (secure) and v1
-  // (legacy) hand off to BackupRestore's password flow; v2 restores here
-  // with the session key.
+  // Read a backup file and route it by version: v3 (secure) and v1
+  // (legacy) hand off to BackupRestore's password flow; v2 restores right
+  // here with the session key.
   const handleRestore = async () => {
     const backup = await readBackupFile();
 
@@ -332,9 +337,10 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
               selectedYear={selectedYear}
             />
           </Suspense>
-          {/* No key={refreshKey}: remounting History on every save wiped its
-              inline-edit state mid-workflow. The transactions prop changing
-              after the vault reload rerenders it in place. */}
+          {/* Deliberately no key={refreshKey}: remounting History on every
+              save wipes its inline-edit state mid-workflow. Once the vault
+              reloads, the changed transactions prop rerenders it in place
+              instead. */}
           <History
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}

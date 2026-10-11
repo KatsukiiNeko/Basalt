@@ -1,6 +1,8 @@
-// Service-level tests for the auth flows LockScreen and PasswordManager use.
-// All crypto runs at a fast iteration count; production constants stay
-// pinned by tests/crypto.test.js.
+// Service-level tests for src/services/auth — the flows LockScreen drives
+// (fetchAccountAuthState, unlockAttempt, setupPassword, upgradePbkdf2) and
+// PasswordManager drives (changePassword). Most derivation here runs at a
+// fast iteration count to keep these quick; tests/crypto.test.js is what
+// pins the production constant.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from '../src/db/db';
 import {
@@ -54,7 +56,7 @@ describe('fetchAccountAuthState', () => {
   it('reports first-time when no password was ever set', async () => {
     const state = await fetchAccountAuthState(ACCT);
     expect(state.isFirstTime).toBe(true);
-    expect(state.storedIterations).toBe(200000); // legacy default
+    expect(state.storedIterations).toBe(200000); // legacy default, reported before anything is stored
   });
 
   it('reads back the persisted iteration version', async () => {
@@ -70,7 +72,8 @@ describe('unlockAttempt', () => {
     const { key } = await seedVault('correct-horse');
     const attempt = await unlockAttempt(ACCT, 'correct-horse');
     expect(attempt.isValid).toBe(true);
-    // CryptoKey objects are not comparable; prove usability by decrypting.
+    // CryptoKey objects can't be compared, so we prove the returned key is
+    // the real one by using it: it opens a row the vault key wrote.
     const id = await addRow(TX, key);
     const row = await db.transactions.get(id);
     const plain = await decryptTransactionFromStorage(row, attempt.key);
@@ -119,12 +122,13 @@ describe('changePassword', () => {
 
     await changePassword(ACCT, 'old-pass', 'new-pass-9', { iterations: FAST });
 
-    // Old password no longer verifies.
+    // The old password is dead: rekeyVault swapped in a fresh salt and
+    // verification token, so nothing under the old one verifies any more.
     expect((await unlockAttempt(ACCT, 'old-pass')).isValid).toBe(false);
     const after = await unlockAttempt(ACCT, 'new-pass-9');
     expect(after.isValid).toBe(true);
 
-    // Both rows decrypt under the new key.
+    // The rekey re-wrapped every row, so both still open under the new key.
     const rows = await db.transactions.where('accountId').equals(ACCT).toArray();
     expect(rows).toHaveLength(2);
     for (const row of rows) {
@@ -147,14 +151,16 @@ describe('changePassword', () => {
   it('ABORTS the rekey when a row is undecryptable — never a partial wipe', async () => {
     const { key } = await seedVault('owner');
     await addRow(TX, key);
-    // Corrupt row: encrypted with a different key, silently un-decryptable.
+    // Corrupt row: encrypted under a foreign key, so rekeyVault's decrypt
+    // pass throws on it.
     const foreignKey = await deriveKey('foreign', generateSalt(), FAST);
     await addRow({ ...TX, date: '2026-03-09' }, foreignKey);
 
     await expect(changePassword(ACCT, 'owner', 'next-pass', { iterations: FAST }))
       .rejects.toThrow();
 
-    // The wipe never happened: both rows still exist under the old password.
+    // The wipe never ran: rekeyVault decrypts everything before it deletes
+    // anything, so both rows survive under the old password.
     const rows = await db.transactions.where('accountId').equals(ACCT).toArray();
     expect(rows).toHaveLength(2);
     expect((await unlockAttempt(ACCT, 'owner')).isValid).toBe(true);
@@ -174,7 +180,8 @@ describe('upgradePbkdf2', () => {
     const state = await fetchAccountAuthState(ACCT);
     expect(state.storedIterations).toBe(600000);
 
-    // The re-encrypted rows decrypt with the NEW 600k key.
+    // The row was re-wrapped at the new iteration count: the 600k key is
+    // the only one that opens it now.
     const newAttempt = await unlockAttempt(ACCT, 'keep-me');
     expect(newAttempt.isValid).toBe(true);
     const rows = await db.transactions.where('accountId').equals(ACCT).toArray();

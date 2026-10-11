@@ -44,8 +44,8 @@ const BackupRestore = ({ onBackup, onSecureBackup, onRestore, onSecureRestore, o
             setLockoutTimer(Math.ceil(lockout.retryAfter / 1000));
           }
         } catch {
-          // If the fingerprint/lockout read fails we still show the restore
-          // form; the submit path re-checks the lockout engine anyway.
+          // We still show the restore form when the fingerprint/lockout
+          // read fails; the submit path re-checks the lockout engine anyway.
         }
       };
       initLockout();
@@ -113,10 +113,13 @@ const BackupRestore = ({ onBackup, onSecureBackup, onRestore, onSecureRestore, o
     setMode('secureBackup');
   };
 
-  // Export (DR-0009): builds the .xlsx in memory and downloads it. The
-  // status/error lines double as the toast: success names the file and
-  // row count, empty explains there is nothing to export yet, failures
-  // offer a retry by simply pressing the button again.
+  // Export (DR-0009): onExport is Dashboard's handleExport, which builds the
+  // .xlsx blob in memory; saveBlob then writes it to the destination the
+  // user chooses (File System Access API on Chromium, anchor download
+  // fallback) and reports 'cancelled' when that save dialog is dismissed.
+  // These status/error lines double as the toast: success names the file
+  // and row count, empty explains there is nothing to export yet, and a
+  // failure offers a retry by simply pressing the button again.
   const handleExport = async () => {
     if (!onExport) return;
     setError('');

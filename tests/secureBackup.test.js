@@ -1,7 +1,7 @@
-// Integration tests for the secure-backup lifecycle against an in-memory
-// IndexedDB (fake-indexeddb via tests/setup.js): create -> parse -> restore,
-// plus failure paths and the skippedCount corruption-reporting contract
-// (DR-0004).
+// Our secure-backup lifecycle tests, run against the in-memory IndexedDB
+// from tests/setup.js (fake-indexeddb): create -> parse -> restore, the
+// failure paths, and the skippedCount corruption-reporting contract that
+// DR-0004 defines.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from '../src/db/db';
 import {
@@ -62,7 +62,8 @@ describe('createSecureBackup / parseSecureBackup / restoreSecureBackup round-tri
     const rows = await db.transactions.where('accountId').equals(ACCOUNT).toArray();
     expect(rows).toHaveLength(2);
 
-    // Restore re-encrypts with the *session* key, so the session can read it.
+    // Restore re-wraps every row under the *session* key, so it is this
+    // session — not the backup password — that reads them back.
     const { decryptTransactionFromStorage, getSessionKey } = await import('../src/crypto/crypto');
     const plain = await decryptTransactionFromStorage(rows[0], getSessionKey(ACCOUNT));
     expect(plain.amount).toBe(1250000);
@@ -93,8 +94,9 @@ describe('createSecureBackup / parseSecureBackup / restoreSecureBackup round-tri
 describe('createSecureBackup skippedCount contract (DR-0004)', () => {
   it('counts undecryptable rows in metadata instead of aborting or staying silent', async () => {
     await seedAccount();
-    // A row whose ciphertext does not match the account key simulates a
-    // corrupted record; decryption throws inside the backup loop.
+    // We hand createSecureBackup a row whose ciphertext the account key
+    // never produced — a corrupted record. Decryption throws on it inside
+    // the backup loop, which DR-0004 says to count, not to abort on.
     await db.transactions.add({
       iv: [1, 2, 3],
       data: [9, 9, 9, 9],
@@ -104,7 +106,8 @@ describe('createSecureBackup skippedCount contract (DR-0004)', () => {
     const backup = await createSecureBackup('good-password', ACCOUNT);
     expect(backup.skippedCount).toBe(1);
 
-    // The corrupt row is absent from the restored payload; only good rows land.
+    // The corrupt row never made it into the payload, so restore lays down
+    // only the two good rows.
     const restored = await restoreSecureBackup(backup, 'good-password', ACCOUNT);
     expect(restored).toBe(2);
   });

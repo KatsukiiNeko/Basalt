@@ -1,10 +1,11 @@
-// Authentication and key-lifecycle service for one account's vault.
+// Our auth and key-lifecycle service for one account's vault.
 //
-// Owns: first-time password setup, unlock verification, account rekeying
+// We own first-time password setup, unlock verification, account rekeying
 // (password change and PBKDF2 iteration upgrade), and the lockout merge
 // from the pre-V2 inline system onto the tested utils/lockout.js engine.
-// WebCrypto primitives are imported from crypto/primitives — never
-// re-implemented here.
+// LockScreen.jsx drives setup / unlock / upgrade / reset; PasswordManager
+// drives password change. WebCrypto primitives are imported from
+// crypto/primitives — we never re-implement them here.
 import { db } from '../db/db';
 import {
   deriveKey,
@@ -17,8 +18,9 @@ import {
 } from '../crypto/crypto';
 import { PBKDF2_ITERATIONS } from '../crypto/constants';
 
-// Iterations used before the current standard; old vaults are still
-// derivable with it and upgraded on next successful unlock.
+// The iterations we used before the current standard. Old vaults are
+// still derivable with it (fetchAccountAuthState falls back to it when
+// pbkdf2Version is unset) and upgraded on next successful unlock.
 const LEGACY_ITERATIONS = 200000;
 
 export async function fetchAccountAuthState(accountId) {
@@ -36,9 +38,12 @@ export async function fetchAccountAuthState(accountId) {
   };
 }
 
-// Derive a key candidate from the stored salt at the vault's real iteration
-// count. `iterations` exists so tests can run fast; production always uses
+// Derives a key candidate from the stored salt at the vault's real
+// iteration count and checks it against the stored verification token.
+// `iterations` exists only so tests can run fast; production always uses
 // the persisted pbkdf2Version (or the legacy default for old vaults).
+// LockScreen calls this on unlock and does the failed/successful attempt
+// bookkeeping around the result.
 export async function unlockAttempt(accountId, password, { iterations } = {}) {
   const { saltSetting, tokenSetting, storedIterations } = await fetchAccountAuthState(accountId);
 
@@ -70,9 +75,12 @@ export async function setupPassword(accountId, password, { iterations = PBKDF2_I
 // One-way rotation: decrypt every row with `oldKey`, re-encrypt with
 // `newKey`, then swap salt+token+pbkdf2Version inside a single DB
 // transaction. Any row that fails decryption aborts the ENTIRE rekey —
-// unlike the pre-V2 inline code, which silently dropped undecryptable rows
-// and would have destroyed them at the delete-all step. PasswordManager's
-// inline version of this loop (throw on first bad row) matches.
+// unlike the pre-V2 inline code, which silently dropped undecryptable
+// rows and would have destroyed them at the delete-all step. We decrypt
+// everything before the DB transaction below opens, so an abort leaves
+// the vault exactly as it was. PasswordManager's inline version of this
+// loop (throw on first bad row) matches it — and PasswordManager now
+// just calls changePassword, which lands here.
 async function rekeyVault(accountId, oldKey, newKey, newSalt, newIterations) {
   const rows = await db.transactions.where('accountId').equals(accountId).toArray();
 
@@ -100,8 +108,10 @@ async function rekeyVault(accountId, oldKey, newKey, newSalt, newIterations) {
   });
 }
 
-// Change the vault password. Verifies the old password first; throws
-// 'WRONG_PASSWORD' (mapped to UI copy by the caller) if it fails.
+// Change the vault password: verify the current password first, then
+// rekey onto a fresh salt. A bad current password throws
+// 'WRONG_PASSWORD' — PasswordManager maps that to its localized
+// "incorrect" copy and records a failed lockout attempt.
 export async function changePassword(accountId, currentPassword, newPassword, { iterations = PBKDF2_ITERATIONS } = {}) {
   const attempt = await unlockAttempt(accountId, currentPassword);
   if (!attempt.isValid) throw new Error('WRONG_PASSWORD');
@@ -113,8 +123,10 @@ export async function changePassword(accountId, currentPassword, newPassword, { 
   return true;
 }
 
-// Destructive last-resort reset for a corrupted vault (token missing):
-// wipes the account's transactions and auth state. The user re-enters
+// Destructive last-resort reset for a corrupted vault (token missing),
+// called from LockScreen's reset flow: wipes the account's transactions
+// and auth state — both lockout stores included, the pre-V2
+// lockoutData: and the current pwdLockout: keys. The user re-enters
 // setup afterwards with a fresh password.
 export async function deleteAccount(accountId) {
   await db.transaction('rw', db.transactions, db.settings, db.accounts, async () => {
@@ -132,7 +144,9 @@ export async function deleteAccount(accountId) {
 
 // Upgrade a legacy-iteration vault to the current PBKDF2 standard after a
 // successful unlock. Runs with the freshly verified old key. Failure is
-// never silent: corruption must surface, not data.
+// never silent: corruption must surface rather than be lost — so we
+// rethrow below as REKEY_FAILED, while LockScreen treats a failed
+// upgrade as "stay on the old iterations, upgrade on a later session".
 export async function upgradePbkdf2(accountId, verifiedOldKey, password, { iterations = PBKDF2_ITERATIONS } = {}) {
   const newSalt = generateSalt();
   const newKey = await deriveKey(password, newSalt, iterations);
@@ -140,8 +154,9 @@ export async function upgradePbkdf2(accountId, verifiedOldKey, password, { itera
     await rekeyVault(accountId, verifiedOldKey, newKey, newSalt, iterations);
     setSessionKey(newKey, accountId);
   } catch (err) {
-    // Re-throw with cause so lockout/upgrade failures stay debuggable; the
-    // raw error never reaches user-facing copy.
+    // Rethrow with `cause` so the underlying failure stays debuggable,
+    // while the raw error never reaches user-facing copy — callers only
+    // see REKEY_FAILED.
     throw new Error('REKEY_FAILED', { cause: err });
   }
 }

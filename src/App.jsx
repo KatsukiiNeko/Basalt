@@ -21,15 +21,31 @@ function App() {
       try {
         await db.accounts.toArray();
       } catch {
-        // If IndexedDB itself is unavailable (rare: private mode with
-        // storage full/blocked), fall through to the account screen; each
-        // flow surfaces its own actionable error on first DB use.
+        // IndexedDB itself unavailable (rare: private mode, storage full or
+        // blocked) is not something we can decide around here, so we don't
+        // try — setIsLoading(false) runs either way and we fall through to
+        // the account screen, where AccountSelector's own catch keeps the
+        // selector usable and the first real write surfaces the error.
+        // Blocking on a spinner forever would tell the user less than that.
       }
       setIsLoading(false);
     };
     checkAccounts();
   }, []);
 
+  // Idle lockout: after SESSION_TIMEOUT (15 min) with no activity we drop
+  // the session key and re-lock. clearSessionKey() is the entire lock —
+  // the key lives only in memory (crypto/sessionKeys.js), so once it is
+  // gone nothing here can decrypt the vault again until the password is
+  // re-entered at LockScreen.
+  //
+  // resetTimeout() always clears the previous timer before arming a new
+  // one, and only arms while we're unlocked with an account selected, so
+  // one can never fire into the lock screen or a half-selected session.
+  // The effect below wires it to mousemove/keydown/touchstart/click — the
+  // four signals we treat as "someone is still there" — and its cleanup
+  // removes those listeners and clears the timer, so neither a lock nor an
+  // account switch leaves a stale timeout to lock the next session.
   const resetTimeout = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);

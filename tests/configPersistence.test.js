@@ -3,7 +3,7 @@ import { formatMoney } from '../src/utils/currency';
 import { translations } from '../src/i18n/translations';
 
 // Config persistence contract: the onboarding wizard writes real choices
-// through the same localStorage keys the contexts read at startup. jsdom
+// through the same localStorage keys our contexts read at startup. jsdom
 // gives us a real (in-memory) localStorage per test file.
 const KEYS = {
   currency: 'basalt-currency',
@@ -22,7 +22,7 @@ describe('onboarding/config persistence keys', () => {
   });
 
   it('contexts read back what the wizard persists', () => {
-    // Simulate OnboardingOverlay's writes (setCurrency/setVndDisplayMode/
+    // We replay OnboardingOverlay's writes (setCurrency/setVndDisplayMode/
     // setLanguage/complete all persist through these exact keys).
     localStorage.setItem(KEYS.currency, 'VND');
     localStorage.setItem(KEYS.vndMode, 'exact');
@@ -34,7 +34,8 @@ describe('onboarding/config persistence keys', () => {
     expect(localStorage.getItem(KEYS.lang)).toBe('VI');
     expect(localStorage.getItem(KEYS.onboarded)).toBe('1');
 
-    // Dashboard's first-run gate reads exactly this sentinel.
+    // Dashboard's first-run gate reads exactly this sentinel — anything
+    // else still counts as a first run.
     expect(localStorage.getItem(KEYS.onboarded) !== '1').toBe(false);
   });
 
@@ -43,7 +44,7 @@ describe('onboarding/config persistence keys', () => {
     expect(localStorage.getItem(KEYS.vndMode)).toBeNull();
     expect(localStorage.getItem(KEYS.lang)).toBeNull();
 
-    // Context initializers fall back: USD / scaled / EN — and Dashboard
+    // Our context initializers fall back: USD / scaled / EN — and Dashboard
     // treats a null onboarded flag as "show onboarding".
     expect((localStorage.getItem(KEYS.currency) || 'USD')).toBe('USD');
     expect((localStorage.getItem(KEYS.vndMode) || 'scaled')).toBe('scaled');
@@ -58,12 +59,12 @@ describe('persisted config drives formatting consistently', () => {
 
     const view = (cur, mode) => formatMoney(stored, cur, mode);
 
-    // VND scaled: stored value IS thousands of dong, multiplied to full
-    // digits for display.
+    // VND scaled: the stored value IS thousands of dong, so we multiply to
+    // full digits for display.
     expect(view('VND', 'scaled')).toBe('1.250.000 VND');
-    // VND exact: stored value IS dong.
+    // VND exact: the stored value IS dong, so it passes through as-is.
     expect(view('VND', 'exact')).toBe('1.250 VND');
-    // USD ignores vnd-mode entirely.
+    // USD ignores vnd-mode entirely — both modes render the same.
     expect(view('USD', 'scaled')).toBe('1,250.00 USD');
     expect(view('USD', 'exact')).toBe('1,250.00 USD');
   });
@@ -71,8 +72,8 @@ describe('persisted config drives formatting consistently', () => {
 
 describe('amountHint translation keys resolve in every language', () => {
   // Regression guard for the original bug: a missing key leaked its raw
-  // identifier into the UI. Both modes must resolve to non-key strings in
-  // both en and vi.
+  // identifier straight into the UI. So both modes have to resolve to
+  // non-key strings in both en and vi.
   it.each([
     ['form.amountHint.scaled'],
     ['form.amountHint.exact']
@@ -89,10 +90,10 @@ describe('amountHint translation keys resolve in every language', () => {
     expect(translations['form.amountHint']).toBeUndefined();
   });
 
-// V2 i18n layer: every user-facing key added by the currency settings and
-// the month picker must resolve in BOTH languages. t() leaks the raw key
-// when a translation is missing; this suite pins the whole surface so a
-// raw key can never ship in either language.
+// V2 i18n layer: every user-facing key we added for the currency settings
+// and the month picker has to resolve in BOTH languages. t() leaks the raw
+// key when a translation is missing, so this suite pins the whole surface —
+// a raw key can never ship in either language.
 describe('V2 translation surface completeness', () => {
   const REQUIRED_KEYS = [
     'settings.currencySection', 'settings.currencyHelp', 'settings.displayFormat',

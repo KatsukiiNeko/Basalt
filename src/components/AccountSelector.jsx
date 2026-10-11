@@ -36,8 +36,11 @@ const AccountSelector = ({ onAccountSelected }) => {
         const all = await db.accounts.toArray();
         if (!cancelled) setAccounts(all);
       } catch {
-        // IndexedDB unavailable — presenting the empty selector keeps the
-        // create-account flow reachable, which will surface the real error.
+        // IndexedDB unavailable — we show the selector anyway rather than a
+        // spinner or a dead end: its Create account button stays visible,
+        // and handleCreate's catch below turns a failed db.accounts.put
+        // into accounts.errors.createFailed, which is the first actionable
+        // error the user gets.
       } finally {
         if (!cancelled) setLoading(false);
       }

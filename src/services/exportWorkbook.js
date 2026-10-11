@@ -1,32 +1,40 @@
-// Pure workbook builders for the multi-sheet .xlsx export (DR-0009).
+// Our pure builders for the multi-sheet .xlsx export (DR-0009) — this is
+// where the workbook format itself lives: cell types, sanitization,
+// sheet layout.
 //
 // No Dexie, no DOM, no network: decrypted records in, write-excel-file
-// sheet specs + feature plugins out. Kept separate from exportService so
-// the workbook format (cell types, sanitization, sheet layout) is unit
-// testable without touching the DB or the crypto layer.
+// sheet specs + feature plugins out. We keep this separate from
+// exportService.js so the format is unit testable without touching the
+// DB or the crypto layer — tests/export.test.js drives every function
+// here directly.
 
 import { computeSummary } from './transactions';
 import { aggregateMonthlyTrend } from '../utils/chartData';
 
-// XLSX hard limit: 1,048,576 rows per sheet, header row included.
+// XLSX hard limit: 1,048,576 rows per sheet, header row included. We
+// check against it in assertRowLimit instead of shipping a file that
+// Excel refuses to open.
 export const MAX_ROWS = 1048576;
-// XLSX hard limit: 32,767 characters per cell.
+// XLSX hard limit: 32,767 characters per cell — sanitizeText enforces it.
 const MAX_CELL_LENGTH = 32767;
-// Control characters are illegal in OOXML text nodes. The library strips
-// them as well, but the export path does it explicitly (before truncation,
-// so a stripped character can never hide an overlong tail).
+// Control characters are illegal in OOXML text nodes. write-excel-file
+// strips them as well, but the export path does it explicitly — and it
+// strips before truncating, so a stripped character can never hide an
+// overlong tail.
 // eslint-disable-next-line no-control-regex -- matching control chars is the entire point
 const CONTROL_CHARS = /[\x00-\x08\x0B\x0C\x0E-\x1F]/g;
 // Column widths are a usability clamp, not a measurement: below 10 chars
-// content is unreadable, above 50 it wastes the viewport.
+// content is unreadable, above 50 it wastes the viewport, so clampWidth
+// folds every width into [10, 50].
 const MIN_WIDTH = 10;
 const MAX_WIDTH = 50;
 // Full-VND export (DR-0003): VND always carries zero decimals, USD keeps
-// its two. The scaling decision lives in makeAmountCell, not in the format.
+// its two. The format only sets display precision — the multiply-by-1000
+// scaling decision lives in makeAmountCell, not here.
 const MONEY_FORMAT = { VND: '#,##0', USD: '#,##0.00' };
 
 // null/undefined become empty cells; everything else is coerced to a
-// sanitized, truncated string.
+// string, stripped of control characters, and capped at MAX_CELL_LENGTH.
 export function sanitizeText(value) {
   if (value === null || value === undefined) return null;
   return String(value).replace(CONTROL_CHARS, '').slice(0, MAX_CELL_LENGTH);
@@ -36,11 +44,12 @@ export function clampWidth(width) {
   return Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, width));
 }
 
-// 'YYYY-MM-DD' -> a Date at UTC midnight, which convertDateToSerialNumber
-// turns into an exact integer serial in EVERY timezone (it divides getTime()
-// by a day). A local-midnight Date would day-shift for anyone east of UTC:
-// 00:00 UTC+7 is 17:00 UTC of the previous day. Malformed dates fall back
-// to a text cell instead of silently becoming a different day.
+// We turn 'YYYY-MM-DD' into a Date at UTC midnight, which
+// convertDateToSerialNumber then reads as an exact integer serial in
+// EVERY timezone (it divides getTime() by a day). A local-midnight Date
+// would day-shift for anyone east of UTC: 00:00 UTC+7 is 17:00 UTC of
+// the previous day. Malformed dates fall back to a text cell instead of
+// silently becoming a different day.
 export function dateCell(date) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date == null ? '' : String(date));
   if (match) {
@@ -65,10 +74,12 @@ export function assertRowLimit(rowCount) {
   }
 }
 
-// Amount cell factory for the active currency. Stored amounts are
-// unit-neutral (DR-0003): in 'scaled' display mode the stored value means
-// thousands, so the exported file multiplies by 1000 to hold full VND —
-// exactly what the user reads on screen. USD is rounded to its 2 decimals.
+// Amount cell factory for the active currency, used by every money
+// column and every Summary metric. Stored amounts are unit-neutral
+// (DR-0003): in 'scaled' display mode the stored value means thousands,
+// so the exported file multiplies by 1000 to hold full VND — exactly
+// what the user reads on screen. USD is rounded to its 2 decimals; an
+// unknown currency falls back to the USD format.
 export function makeAmountCell(currency, vndDisplayMode) {
   const format = MONEY_FORMAT[currency] || MONEY_FORMAT.USD;
   return (amount) => {
@@ -84,6 +95,7 @@ export function makeAmountCell(currency, vndDisplayMode) {
 }
 
 // 0-based column index -> Excel column letter ("0" -> "A", "26" -> "AA").
+// We only need it for the autoFilter ref that makeSheet builds.
 function colLetter(index) {
   let result = '';
   let i = index;
@@ -106,8 +118,9 @@ function numberCell(value) {
   return { value, type: Number, format: '#,##0' };
 }
 
-// Every sheet: frozen header row, clamped column widths, and (except the
-// Summary's metric pairs) an autofilter over the header.
+// One shape for every sheet: frozen header row, clamped column widths,
+// and (except the Summary's metric pairs, passed as filter: false) an
+// autofilter over the header.
 function makeSheet(name, data, widths, { filter = true } = {}) {
   const sheet = {
     data,
@@ -123,8 +136,9 @@ function makeSheet(name, data, widths, { filter = true } = {}) {
 }
 
 // Builds the full workbook: Summary, Transactions, Accounts, Categories
-// (the last one only when observed transactions exist). Transactions are
-// sorted date ascending with id as tiebreak so re-exports are byte-stable.
+// (the last one only when observed transactions exist). Transactions go
+// in sorted date ascending with id as tiebreak so re-exporting the same
+// data stays byte-stable.
 export function buildSheets({
   transactions,
   accounts,
@@ -141,10 +155,11 @@ export function buildSheets({
     return (a.id ?? 0) - (b.id ?? 0);
   });
 
-  // Summary totals come from the app's own calc functions (parity with the
-  // dashboard): month/all-time balance from computeSummary, per-month
-  // income/expense from aggregateMonthlyTrend (whose sums are the all-time
-  // income/expense figures — one calculation, two views).
+  // Summary totals come from the app's own calc functions (parity with
+  // the dashboard): month/all-time balance from computeSummary,
+  // per-month income/expense from aggregateMonthlyTrend — and we sum
+  // that trend's arrays for the all-time income/expense lines, so one
+  // calculation serves two views.
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const summaryOf = computeSummary(sorted, now.getFullYear(), now.getMonth());
   const trend = aggregateMonthlyTrend(sorted);
@@ -164,8 +179,9 @@ export function buildSheets({
     [cellText(`${monthKey} income`), amountCell(summaryOf.monthIncome)],
     [cellText(`${monthKey} expense`), amountCell(summaryOf.monthExpenses)],
   ];
-  // Corrupt rows skipped during decrypt are reported in the file itself
-  // (same precedent as backup metadata reporting skipped rows).
+  // Rows we skipped during decrypt are reported in the file itself
+  // rather than lost (same precedent as backup metadata reporting
+  // skipped rows).
   if (skippedCount > 0) {
     summaryRows.push([cellText('Rows skipped on decrypt'), numberCell(skippedCount)]);
   }
@@ -189,7 +205,7 @@ export function buildSheets({
       dateCell(tx.date),
       cellText(tx.type === 'income' ? 'Income' : 'Expense'),
       cellText(tx.category),
-      // Signed amounts: income positive, expense negative.
+      // Signed on this sheet: income positive, expense negative.
       amountCell(tx.type === 'income' ? tx.amount : -tx.amount),
       cellText(tx.note ?? null),
     ]);
@@ -203,9 +219,10 @@ export function buildSheets({
       headerCell('Income'), headerCell('Expense'), headerCell('Balance')],
   ];
   for (const account of sortedAccounts) {
-    // Transaction counts need no decryption (accountId is a plain index);
-    // money columns are only computable for the exported (active) account,
-    // whose session key we hold — other accounts get empty cells.
+    // Transaction counts need no decryption (accountId is a plain
+    // index), so we fill them for every account. Money columns are only
+    // computable for the exported (active) account, whose session key we
+    // hold — other accounts get empty cells.
     const isActive = account.id === accountId;
     accountRows.push([
       cellText(account.name),
@@ -217,10 +234,11 @@ export function buildSheets({
     ]);
   }
 
-  // Categories derived from observed transactions, grouped per (type,
-  // category) so income and expense are never summed together. This is
-  // deliberately not aggregateExpensesByCategory: that one merges into
-  // "Other" for the chart and would lose per-category totals here.
+  // Categories derived from observed transactions, grouped per
+  // (type, category) so income and expense are never summed together.
+  // We deliberately don't reuse aggregateExpensesByCategory here: that
+  // one merges into "Other" for the chart and would lose the
+  // per-category totals this sheet owes the user.
   const categoryMap = new Map();
   for (const tx of sorted) {
     const key = `${tx.type}\u0000${tx.category ?? ''}`;
@@ -239,8 +257,8 @@ export function buildSheets({
   );
 
   const sheets = [
-    // No autofilter on Summary: it is metric/value pairs plus a trend
-    // block, not a uniform table.
+    // Summary gets no autofilter: it is metric/value pairs plus a
+    // trend block, not a uniform table.
     makeSheet('Summary', summaryRows, [26, 18, 16, 16], { filter: false }),
     makeSheet('Transactions', transactionRows, [14, 12, 24, 18, 40]),
     makeSheet('Accounts', accountRows, [24, 14, 14, 18, 18, 18]),
@@ -265,11 +283,12 @@ export function buildSheets({
   return sheets;
 }
 
-// Injects <autoFilter/> immediately after </sheetData>: the XLSX element
-// order puts autoFilter right after sheetData and before mergeCells /
-// pageMargins, which is exactly where this lands. (The feature's `insert`
-// hook would append after <drawing/> — the wrong position — so `transform`
-// on the sheet XML is the correct hook.)
+// Our <autoFilter/> injector: it splices the element in immediately
+// after </sheetData>, which is where XLSX element order wants it — right
+// after sheetData, before mergeCells / pageMargins. Note this has to be
+// the `transform` hook, not the feature's `insert`: insert would append
+// after <drawing/>, the wrong position, so transforming the sheet XML is
+// the correct hook.
 const autoFilterFeature = {
   files: {
     transform: {
@@ -294,9 +313,10 @@ function escapeXml(value) {
     .replace(/"/g, '&quot;');
 }
 
-// write-excel-file has no docProps generator, so title/creator metadata is
-// written as docProps/core.xml and registered in [Content_Types].xml and
-// _rels/.rels — the three places OOXML requires for core properties.
+// write-excel-file has no docProps generator, so we write the
+// title/creator metadata ourselves as docProps/core.xml and register it
+// in [Content_Types].xml and _rels/.rels — the three places OOXML
+// requires for core properties.
 export function metadataFeature({ title, creator, now }) {
   const iso = now.toISOString();
   const coreXml =
@@ -339,6 +359,8 @@ export function metadataFeature({ title, creator, now }) {
   };
 }
 
+// Hands write-excel-file both of our features: the autoFilter shim plus
+// the docProps metadata writer.
 // @param {{title: string, creator: string, now: Date}} metadata
 export function buildFeatures(metadata) {
   return [autoFilterFeature, metadataFeature(metadata)];

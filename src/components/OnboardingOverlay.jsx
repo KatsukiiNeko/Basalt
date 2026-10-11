@@ -5,9 +5,12 @@ import { formatMoney } from '../utils/currency';
 
 const ONBOARDING_KEY = 'basalt-onboarded';
 
-// Wizard: 0 welcome -> 1 language -> 2 currency -> 3 VND display mode.
-// Step 3 only appears when VND is chosen — the display-unit distinction
-// only exists for VND. Stored values are never touched either way (DR-0003).
+// Our onboarding step order: 0 welcome -> 1 language -> 2 currency ->
+// 3 VND display mode. Step 3 only appears when VND is chosen — the
+// VND-vs-Thousand-VND display distinction only exists for VND — and
+// `lastStep` below is derived from that. Picking either mode writes only
+// the display preference: stored values are never touched either way
+// (DR-0003).
 const VND_STEP = 3;
 
 const EXAMPLE_AMOUNT = 1250000;
@@ -85,7 +88,10 @@ const OnboardingOverlay = ({ onComplete }) => {
     try {
       localStorage.setItem(ONBOARDING_KEY, '1');
     } catch {
-      // Storage unavailable — still complete for this session.
+      // Private mode can make localStorage throw. We complete anyway — the
+      // overlay is dismissed for this session either way; worst case it
+      // reappears on the next load, because Dashboard reads this same key
+      // to decide whether to show it.
     }
     onComplete();
   };
@@ -100,8 +106,10 @@ const OnboardingOverlay = ({ onComplete }) => {
 
   const liveExample = formatMoney(EXAMPLE_AMOUNT, currency, vndDisplayMode);
 
-  // USD skips the display-format step entirely — the VND-vs-Thousand-VND
-  // distinction only exists for VND.
+  // USD never shows the display-format step — the VND-vs-Thousand-VND
+  // distinction only exists for VND — so its last step is one earlier.
+  // This recomputes every render, which is what keeps the dot count and
+  // the Next/Done label honest when someone switches currency mid-wizard.
   const lastStep = currency === 'VND' ? VND_STEP : VND_STEP - 1;
 
   return (

@@ -1,4 +1,7 @@
-// Low-level WebCrypto primitives. No session state, no DB access.
+// The bottom of our crypto stack: raw WebCrypto calls only — no session
+// state, no DB access, no idea what a transaction is. Everything here is
+// generic plumbing that crypto.js re-exports (constantTimeEquals is the
+// exception: only transactionCrypto.js uses it, so it isn't re-exported).
 import { PBKDF2_ITERATIONS } from './constants';
 
 export async function deriveKey(password, salt, iterations = PBKDF2_ITERATIONS) {
@@ -55,9 +58,13 @@ export function generateIV(length = 12) {
   return window.crypto.getRandomValues(new Uint8Array(length));
 }
 
-// Timing-safe equality for short secret strings: both operands are hashed to
-// fixed-length digests (hiding length), then XOR-folded so every bit of the
+// Our timing-safe compare for short secret strings — used by
+// verifyPassword() to check the decrypted sentinel. We hash both operands
+// to fixed-length SHA-256 digests (hiding the input length), then XOR the
+// digests together and fold them into a single int, so every bit of the
 // digest influences the result regardless of where a difference lies.
+// Don't "simplify" this to `===`: that short-circuits at the first
+// mismatching byte and leaks how far the comparison got.
 export async function constantTimeEquals(a, b) {
   const enc = new TextEncoder();
   const [digestA, digestB] = await Promise.all([

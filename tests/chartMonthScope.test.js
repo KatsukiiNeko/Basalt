@@ -1,6 +1,7 @@
-// Month-scoping utilities that keep charts in sync with the MonthPicker
-// selection. Regression guard for the V2 bug where doughnut/top-categories
-// aggregated the ENTIRE vault, never matching the selected month.
+// Month-scoping helpers that keep the charts in sync with the MonthPicker
+// selection. This is our regression guard for the V2 bug where the doughnut
+// and top-categories charts aggregated the ENTIRE vault, so they never
+// matched the selected month.
 import { describe, it, expect } from 'vitest';
 import {
   isTransactionInMonth,
@@ -27,7 +28,7 @@ describe('isTransactionInMonth / transactionsInMonth', () => {
   });
 
   it('keeps only the selected calendar month (month is 0-based)', () => {
-    const feb = transactionsInMonth(TXS, 2026, 1); // February
+    const feb = transactionsInMonth(TXS, 2026, 1); // months are 0-based: 1 = Feb
     expect(feb).toHaveLength(2);
     expect(feb.every((t) => t.date.startsWith('2026-02'))).toBe(true);
   });
@@ -56,15 +57,15 @@ describe('isTransactionInMonth / transactionsInMonth', () => {
 
 describe('trendMonthKeys', () => {
   it('returns window keys oldest-first, ending at the selected month', () => {
-    const keys = trendMonthKeys(2026, 2); // March 2026
+    const keys = trendMonthKeys(2026, 2); // months are 0-based: 2 = March 2026
     expect(keys).toHaveLength(TREND_WINDOW);
     expect(keys[0]).toBe('2025-10');
     expect(keys[keys.length - 1]).toBe('2026-03');
-    expect(keys).toEqual([...keys].sort()); // oldest first
+    expect(keys).toEqual([...keys].sort()); // string sort = chronological = oldest first
   });
 
   it('rolls over January correctly', () => {
-    const keys = trendMonthKeys(2026, 0); // January 2026
+    const keys = trendMonthKeys(2026, 0); // 0 = January 2026, window crosses a year
     expect(keys[0]).toBe('2025-08');
     expect(keys[keys.length - 1]).toBe('2026-01');
   });

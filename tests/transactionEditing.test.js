@@ -11,10 +11,11 @@ import {
   getActiveAccountId
 } from '../src/crypto/crypto';
 
-// Exercises the exact persistence flow the new edit feature uses:
-// decrypt -> modify -> validate -> re-encrypt -> update() by ORIGINAL id —
-// against the real Dexie schema on fake-indexeddb. Guards against edit-mode
-// ever creating duplicate rows or bypassing the crypto layer.
+// We exercise the exact persistence flow the edit feature runs: decrypt ->
+// modify -> validate -> re-encrypt -> update() by ORIGINAL id, against the
+// real Dexie schema on fake-indexeddb. The point is the guarantee: edit
+// mode must never create a duplicate row and must never bypass the crypto
+// layer.
 const FAST_ITERATIONS = 1000;
 
 const seedTx = {
@@ -42,33 +43,37 @@ describe('transaction editing round-trip (encrypted, real DB shape)', () => {
   });
 
   it('update() replaces in place — no duplicate rows, id preserved', async () => {
-    // Seed one row through the same path TransactionForm.add uses.
+    // Seed one row through the same encrypt-then-add shape TransactionForm's
+    // add path uses.
     const originalTx = { ...seedTx };
     expect(validateTransactionData(originalTx)).toBe(true);
     const id = await addEncrypted(originalTx, key);
 
-    // History decrypts for display; the form receives this decrypted record.
+    // History decrypts for display, so this decrypted record is what the
+    // form gets handed.
     const storedRow = await db.transactions.get(id);
     const decrypted = await decryptTransactionFromStorage(storedRow, key);
     expect(decrypted.amount).toBe(1250);
 
-    // User edits the amount + category in the form.
+    // The user's edits: amount, category, note — every field has to still
+    // pass validateTransactionData below.
     const modified = {
       ...decrypted,
       amount: 99000,
       category: 'Shopping',
       note: 'headphones'
     };
-    delete modified.id; // form state carries no row id
+    delete modified.id; // form state carries no row id — the save path keys off the original id
     expect(validateTransactionData(modified)).toBe(true);
 
-    // The form's save path: encrypt whole object, update keyed by ORIGINAL id.
+    // The form's save path: encrypt the whole object, then update() keyed
+    // by the ORIGINAL id — that is what keeps this an edit, not an insert.
     const reEncrypted = await encryptTransactionForStorage(modified, key);
     reEncrypted.accountId = getActiveAccountId();
     await db.transactions.update(id, reEncrypted);
 
     const all = await db.transactions.toArray();
-    expect(all).toHaveLength(1); // no duplicate created
+    expect(all).toHaveLength(1); // still one row: no duplicate was created
 
     const after = await decryptTransactionFromStorage(all[0], key);
     expect(after.amount).toBe(99000);
@@ -80,7 +85,8 @@ describe('transaction editing round-trip (encrypted, real DB shape)', () => {
   it('cancelling an edit leaves the stored row untouched', async () => {
     const id = await addEncrypted({ ...seedTx }, key);
 
-    // Simulate "cancel": no write occurs, so the next read must be identical.
+    // Simulate "cancel": no write ever happens, so a re-read has to return
+    // the identical record we started from.
     const row = await db.transactions.get(id);
     const before = await decryptTransactionFromStorage(row, key);
 
@@ -96,7 +102,8 @@ describe('transaction editing round-trip (encrypted, real DB shape)', () => {
 
     const badEdit = { ...seedTx, amount: -5 };
     if (!validateTransactionData(badEdit)) {
-      // TransactionForm stops here — never reaching encrypt/update.
+      // TransactionForm bails at exactly this point, so encrypt/update
+      // never run for an invalid edit.
       return;
     }
     throw new Error('validation should have rejected a negative amount');

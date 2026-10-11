@@ -20,8 +20,8 @@ const CATEGORY_TYPE_MAP = {
   'Other Income': 'income',
 };
 
-// Shape of the local form state, shared by add and edit modes. Edit mode
-// seeds it from the decrypted transaction; add mode starts empty.
+// The shape of our local form state, shared by add and edit modes: edit
+// mode seeds it from the decrypted transaction, add mode starts empty.
 const EMPTY_FORM = {
   date: new Date().toISOString().split('T')[0],
   category: '',
@@ -35,8 +35,8 @@ const TransactionForm = ({ onTransactionAdded }) => {
     date: new Date().toISOString().split('T')[0],
   }));
 
-  // Bumped to remount MoneyInput; its formatted draft is presentation state
-  // that the parent cannot set directly (see MoneyInput docs).
+  // We bump this to remount MoneyInput; its formatted draft is presentation
+  // state the parent cannot set directly (see MoneyInput docs).
   const [amountResetKey, setAmountResetKey] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -143,7 +143,7 @@ const TransactionForm = ({ onTransactionAdded }) => {
           <div className="form-group">
             <label htmlFor="amount">{t('form.amount')}</label>
             <MoneyInput
-              // Remounts after each successful add so the formatted draft
+              // Remounts after each successful add, so the formatted draft
               // starts clean — never mid-edit.
               key={amountResetKey}
               id="amount"

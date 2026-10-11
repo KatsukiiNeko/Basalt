@@ -15,10 +15,12 @@ import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 
-// Register ECharts modules (tree-shakeable)
+// We register only the chart/component/renderer modules we actually paint
+// with — the tree-shakeable echarts/core entry keeps this lazy chunk small.
 echarts.use([PieChart, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, TitleComponent, GraphicComponent, CanvasRenderer]);
 
-// Category → CSS var map; colors match the category icon badges in index.css
+// Category → CSS var map. These have to stay in step with the category
+// icon badge colors in index.css — a slice and its badge must agree.
 const CATEGORY_COLORS = {
   'Food & Dining':     'var(--cat-food)',         // amber
   'Transportation':    'var(--cat-transport)',    // blue
@@ -38,8 +40,9 @@ function getCategoryColor(name) {
 
 /**
  * Resolve a CSS custom property to a concrete color value. ECharts paints
- * to canvas and can't follow var() references, so theme colors must be
- * read from the DOM at render time.
+ * to canvas and can't follow var() references, so every theme color has to
+ * be read out of the DOM at render time. A missing var, a missing document,
+ * or a getComputedStyle throw all fall back to the color we were handed.
  */
 function readCSSVar(name, fallback) {
   if (typeof document === 'undefined') return fallback;
@@ -50,7 +53,7 @@ function readCSSVar(name, fallback) {
   } catch { return fallback; }
 }
 
-/** Return resolved theme colours (reads DOM at call time) */
+/** The full theme palette, resolved out of the live DOM at call time. */
 function getThemeColors() {
   return {
     cardBg:        readCSSVar('--surface', '#1a1a1e'),
@@ -71,20 +74,21 @@ const chartBaseTextStyle = {
 };
 
 /**
- * Theme-aware palette for canvas rendering. Re-resolves the CSS custom
- * properties whenever `theme` changes; ECharts paints to canvas so it can't
- * follow var() references — concrete values must be re-read per theme.
+ * Our theme-aware palette for canvas rendering. It re-resolves the CSS
+ * custom properties whenever `theme` changes — ECharts can't follow var()
+ * references, so the concrete values have to be re-read for every theme.
  */
 function useThemeColors() {
   const { theme } = useTheme();
-  // `theme` is a deliberate re-render trigger, not a value read inside the
-  // factory (getComputedStyle sees whatever `data-theme` is live at call time).
+  // `theme` is only a re-render trigger for us: the factory reads
+  // getComputedStyle, i.e. whatever `data-theme` is live at call time, so it
+  // never consumes the value itself. The warning below is deliberate.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(() => getThemeColors(), [theme]);
 }
 
-/** Format month keys "YYYY-MM" → localized short month + year; locale comes
- *  from the shared i18n map so all languages stay in one place. */
+/** Format a "YYYY-MM" key → localized short month + year. The locale comes
+ *  from the shared i18n map, so every language we support lives in one place. */
 function formatMonthLabel(ym, language = 'EN') {
   const [y, m] = ym.split('-');
   return new Intl.DateTimeFormat(languageLocale[language] || 'en-US', { month: 'short', year: 'numeric' })
@@ -93,9 +97,10 @@ function formatMonthLabel(ym, language = 'EN') {
 
 /**
  * Own the ECharts instance lifecycle for one container. The instance is
- * created once per mount and every option change is applied via setOption
- * — disposing and re-initialising on each data change (the pre-V2 approach)
- * re-allocates the canvas and drops tooltip state on every refresh.
+ * created once per mount and every option change is applied through
+ * setOption — the pre-V2 approach of disposing and re-initialising on each
+ * data change re-allocated the canvas and dropped tooltip state on every
+ * refresh.
  */
 function useECharts(option, containerRef, onReady) {
   const chartRef = useRef(null);
@@ -124,7 +129,8 @@ function useECharts(option, containerRef, onReady) {
       chartRef.current?.dispose();
       chartRef.current = null;
     };
-    // Init runs once per mount. containerRef and onReady are stable.
+    // Init runs once per mount: containerRef and onReady are stable, so the
+    // empty dep list is exactly what we mean — hence the suppression below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -134,10 +140,11 @@ function useECharts(option, containerRef, onReady) {
     }
   }, [option]);
 
-  // Event handlers live in consumer closures (useCallback over data), so they
-  // must be re-bound when the consumer identity changes — instance reuse
-  // alone would leave the doughnut's hover/click handlers reading stale
-  // category data. off() first: ECharts stacks listeners, never replaces.
+  // Handlers live in consumer closures (useCallback over data), so we
+  // re-bind them whenever the consumer identity changes — reusing the
+  // instance alone would leave the doughnut's hover/click handlers reading
+  // stale category data. off() first, always: ECharts stacks listeners, it
+  // never replaces them.
   useEffect(() => {
     if (!onReady || !chartRef.current) return;
     chartRef.current.off();
@@ -148,17 +155,18 @@ function useECharts(option, containerRef, onReady) {
 // ===========================================================================
 // 1. SPENDING DOUGHNUT
 // ===========================================================================
-const TOP_N = 7; // configurable: number of top categories shown in bar chart
+const TOP_N = 7; // categories the bar chart ranks; the rest folds into "Other"
 
 /**
- * Doughnut chart showing expense breakdown by category.
- * Center label updates on slice hover/click.
- * Touch-friendly (triggerOn: 'click' on tooltip).
+ * Doughnut chart of expenses by category. The center label follows the
+ * slice you hover, and the tooltip fires on click (triggerOn: 'click')
+ * instead of mouseMove so it stays touch-friendly.
  */
 export function SpendingDoughnut({ categories, formatCurrency, t }) {
   const containerRef = useRef(null);
 
-  // Resolve theme colours once at mount time
+  // Theme colours for this option, resolved from the live CSS vars through
+  // useThemeColors (re-done whenever the theme flips).
   const colors = useThemeColors();
   const totalExpensesLabel = t('dashboard.totalExpenses');
   const total = useMemo(() => categories?.reduce((s, c) => s + c.total, 0) || 0, [categories]);
@@ -232,7 +240,8 @@ export function SpendingDoughnut({ categories, formatCurrency, t }) {
           data,
         },
       ],
-      // graphic is set / updated dynamically via chart events to support hover / click interaction
+      // No static graphic: the center label is set and updated from the
+      // chart events we bind below (hover / click).
     };
   }, [categories, formatCurrency, t, colors]);
 
@@ -243,10 +252,10 @@ export function SpendingDoughnut({ categories, formatCurrency, t }) {
       });
     };
 
-    // Show total by default
+    // First paint shows the total, not a category.
     update(totalExpensesLabel, total, 100);
 
-    // Mobile tap-to-toggle: -1 means "showing total"
+    // Mobile tap-to-toggle: activeIndex -1 means "showing the total".
     let activeIndex = -1;
 
     const onHover = (params) => {
@@ -267,7 +276,7 @@ export function SpendingDoughnut({ categories, formatCurrency, t }) {
 
     const onClick = (params) => {
       if (activeIndex === params.dataIndex) {
-        // Toggle off → back to total
+        // Tapped the active slice again → toggle off, back to the total.
         activeIndex = -1;
         update(totalExpensesLabel, total, 100);
       } else {
@@ -344,8 +353,8 @@ function buildCenterGraphic(name, valueText, pctText, colors) {
 // ===========================================================================
 
 /**
- * Horizontal bar chart showing top spending categories ranked.
- * Direct labels on bars — no legend needed.
+ * Horizontal bar chart ranking the top spending categories, biggest on
+ * top. The values sit directly on the bars, so there's no legend to read.
  */
 export function TopCategoriesBar({ categories, totalExpenses, formatCurrency, t }) {
   const containerRef = useRef(null);
@@ -355,12 +364,14 @@ export function TopCategoriesBar({ categories, totalExpenses, formatCurrency, t 
   const option = useMemo(() => {
     if (!categories || categories.length === 0) return null;
 
-    // Reverse so the largest category is at the top
+    // The categories arrive largest-first, but ECharts puts index 0 at the
+    // bottom of a category axis — reverse so the biggest bar lands on top.
     const reversed = [...categories].reverse();
     const names = reversed.map(c => c.name);
     const values = reversed.map(c => c.total);
 
-    // Determine max label length for left margin
+    // Size the left gutter from the longest category name, floor of 110px,
+    // so the y-axis labels never get clipped.
     const maxNameLen = Math.max(...names.map(n => n.length));
     const leftMargin = Math.max(110, maxNameLen * 7);
 
@@ -455,12 +466,13 @@ export function TopCategoriesBar({ categories, totalExpenses, formatCurrency, t 
 // ===========================================================================
 
 /**
- * Line chart showing monthly income, expenses, and net.
+ * Income / expense / net lines across the months the parent hands us.
  */
 export function MonthlyTrendLine({ months, income, expense, net, formatCurrency, t, language }) {
   const containerRef = useRef(null);
 
-  // Resolve theme colours once — they're read from CSS custom properties
+  // The same live-CSS-var palette as the other two charts — ECharts can't
+  // follow var(), so we resolve it here rather than in CSS.
   const colors = useThemeColors();
 
   const option = useMemo(() => {
@@ -616,17 +628,19 @@ export function MonthlyTrendLine({ months, income, expense, net, formatCurrency,
 }
 
 /**
- * Responsive wrapper that lays out the three charts.
- * Mobile: single-column vertical stack.
- * Desktop: two-column grid (line chart spans full width, doughnut + bar side-by-side).
+ * Responsive wrapper that lays out our three charts. Mobile: a single
+ * column stacked vertically. Desktop: a two-column grid where the trend
+ * line spans the full width and the doughnut and bar sit side by side.
  */
 export default function ChartsSection({ transactions, selectedMonth, selectedYear }) {
   const { formatCurrency } = useCurrency();
   const { t, language } = useLanguage();
 
-  // Doughnut and top-categories reflect ONLY the selected month — the same
-  // scope the History list and the month balance use. The trend line keeps a
-  // window ending at the selected month so it still provides context.
+  // Scope note: the doughnut and top-categories follow ONLY the selected
+  // month — the same scope the History list and the month balance use, so
+  // the three never disagree. The trend line keeps a six-month window
+  // (TREND_WINDOW) ending at the selected month instead, so it still gives
+  // month-to-month context.
   const monthTransactions = useMemo(
     () => transactionsInMonth(transactions || [], selectedYear, selectedMonth),
     [transactions, selectedYear, selectedMonth]
@@ -644,8 +658,8 @@ export default function ChartsSection({ transactions, selectedMonth, selectedYea
   }, [monthTransactions]);
 
   const trend = useMemo(() => {
-    // Aggregate once over the full vault (cheap, plain objects), then keep
-    // only the window of months ending at the selection.
+    // One aggregate pass over the whole vault (cheap — plain objects), then
+    // we keep only the window of months ending at the selection.
     const { months, income, expense, net } = aggregateMonthlyTrend(transactions || []);
     const wanted = trendMonthKeys(selectedYear, selectedMonth);
     const windowed = { months: [], income: [], expense: [], net: [] };
@@ -661,8 +675,10 @@ export default function ChartsSection({ transactions, selectedMonth, selectedYea
     return windowed;
   }, [transactions, selectedYear, selectedMonth]);
 
-  // Month empty state — charts match the History list's scope, so an empty
-  // month shows the same guidance instead of stale all-time numbers.
+  // Two empty states, both scoped the way History is: no transactions at
+  // all gets the generic "nothing yet" copy, a month with nothing in it
+  // gets the month-specific copy. Either way we show guidance instead of
+  // charts built from stale all-time numbers.
   if (!transactions || transactions.length === 0) {
     return (
       <section className="charts-section">
