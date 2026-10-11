@@ -126,6 +126,8 @@ const BackupRestore = ({ onBackup, onSecureBackup, onRestore, onSecureRestore, o
       const result = await onExport();
       if (result.empty) {
         setStatus(t('export.empty'));
+      } else if (result.cancelled) {
+        setStatus(t('export.cancelled'));
       } else {
         setStatus(t('export.success', { filename: result.filename, count: result.count }));
       }

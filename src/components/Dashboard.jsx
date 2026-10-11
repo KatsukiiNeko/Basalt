@@ -13,6 +13,7 @@ import LanguageToggle from './LanguageToggle';
 import MonthPicker from './MonthPicker';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
+import { saveBlob } from '../utils/saveFile';
 
 // ECharts (~600 KB minified) is the single largest dependency and only the
 // dashboard's chart panel needs it. Splitting it keeps the unlock -> vault
@@ -132,10 +133,15 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
   };
 
   // The XLSX writer is a lazy chunk (DR-0008/DR-0009): it loads only on
-  // click and the service worker precaches it for offline exports.
+  // click and the service worker precaches it for offline exports. The
+  // destination dialog (Chromium) or default-download fallback runs here,
+  // while the export spinner is still up.
   const handleExport = async () => {
     const { exportWorkbook } = await import('../services/exportService');
-    return exportWorkbook({ accountId, currency, vndDisplayMode });
+    const result = await exportWorkbook({ accountId, currency, vndDisplayMode });
+    if (result.empty) return result;
+    const outcome = await saveBlob(result.blob, result.filename);
+    return { ...result, cancelled: outcome === 'cancelled' };
   };
 
   const handleBackup = async () => {

@@ -601,6 +601,10 @@ export const translations = {
     en: 'Nothing to export yet.',
     vi: 'Chưa có gì để xuất.'
   },
+  'export.cancelled': {
+    en: 'Save cancelled — no file was written.',
+    vi: 'Đã hủy lưu — không có tệp nào được ghi.'
+  },
   'export.failedPrefix': {
     en: 'Export failed: ',
     vi: 'Xuất thất bại: '
