@@ -26,6 +26,7 @@ A secure, offline-first personal finance vault built with React, Vite, and the W
   - [Deployment Hardening](#deployment-hardening)
 - [Privacy](#privacy)
 - [Adaptive Forecasting Engine](#adaptive-forecasting-engine)
+- [Excel Export](#excel-export)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
@@ -48,12 +49,13 @@ The application supports multiple accounts, each with its own encrypted vault, a
 - **End-to-end encryption** — AES-GCM-256, unique IV per transaction, authenticated encryption
 - **Multi-account support** — separate encrypted vaults per account
 - **Portable encrypted backups** — cross-device backup/restore with password-based encryption
+- **Excel export** — one-click `.xlsx` workbook (Summary / Transactions / Accounts / Categories) saved to a destination you choose; built in memory, never uploaded
 - **Adaptive forecasting** — EWMA (α=0.3) + IQR outlier filtering + fixed-bill detection + user-correctable predictions
 - **Installable PWA** — works offline like a native app
 - **Dark/Light theme** — system-aware with manual toggle
 - **Zero network footprint** — `connect-src 'none'` CSP, no analytics, no telemetry
 - **Explicit VND display modes** — first-run choice between Full VND (`1250000` → `1.250.000 VND`) and Thousand VND (`1250` → `1.250.000 VND`, stored value interpreted as thousands); changeable anytime in Settings with a live example; stored values are unit-neutral either way
-- **186 automated tests** — crypto round-trips, forecasting, lockout escalation, DB migrations, account isolation, backup restore, service layer, full i18n surface (Vitest + fake-indexeddb)
+- **220 automated tests** — crypto round-trips, forecasting, lockout escalation, DB migrations, account isolation, backup restore, Excel export, service layer, full i18n surface (Vitest + fake-indexeddb)
 
 ---
 
@@ -75,7 +77,7 @@ Basalt is engineered with a **zero-knowledge** model: the server (there isn't on
 
 | Mechanism | Implementation |
 |-----------|---------------|
-| **Exponential lockout** | 5 attempts = 30s, 10 = 2min, 15 = 5min, 20+ = 10min |
+| **Exponential lockout** | 5 attempts = 30s, 8 = 2min, 12 = 5min, 16 = 10min, 20+ = 30min |
 | **Dual persistence** | Lockout state in both localStorage and IndexedDB |
 | **Cumulative tracking** | Attempts survive page refresh and IndexedDB wipe |
 | **Password change cooldown** | 30s after 3 failed attempts |
@@ -137,7 +139,7 @@ The choice is made at first-run onboarding and can be changed later without rewr
 - Source maps disabled in production
 - Console/debugger statements stripped via Terser
 - Content-hashed filenames for cache busting
-- No external dependencies beyond React and Dexie
+- No runtime dependencies beyond React, Dexie, ECharts and write-excel-file
 
 ---
 
@@ -154,7 +156,7 @@ Basalt is built on a **zero-knowledge, zero-network** architecture:
 | **No external scripts** | No CDNs, no Google Fonts loaded at runtime — fully self-contained |
 | **No server** | All data processing happens on your device — there is no backend |
 | **No account creation** | No email, no phone number, no sign-up — just set a password and go |
-| **No data export** | Your data never leaves your browser unless you explicitly export a backup |
+| **No automatic export** | Nothing is sent anywhere; files leave your device only when you explicitly export a backup or an `.xlsx` |
 | **Encrypted at rest** | Every transaction is AES-256-GCM encrypted in IndexedDB |
 | **Session auto-lock** | Keys are wiped from memory after 15 minutes of inactivity |
 
@@ -180,6 +182,18 @@ No ML. No external libraries. Just math that runs in microseconds.
 
 ---
 
+## Excel Export
+
+The dashboard exports the current account to a single `.xlsx` workbook, built entirely in memory. The export is read-only against the vault: no schema change, no network, no storage write.
+
+Sheets: **Summary**, **Transactions**, **Accounts**, and **Categories** (only when categorised rows exist). Every sheet gets a frozen header row and clamped column widths; uniform sheets get an auto-filter. The XLSX writer (`write-excel-file`) is a lazily-imported chunk, so it stays off the unlock path and the service worker precaches it for offline exports.
+
+`saveBlob()` hands the blob to the File System Access API ("save as" dialog, folder choice remembered per origin) on Chromium and falls back to a normal download everywhere else — a dismissed dialog aborts cleanly, and any other picker failure degrades to the download rather than losing the export. Rows that fail decryption are skipped and counted; the 1,048,576-row XLSX limit is enforced before writing.
+
+The file is **not encrypted** — the app says so on export. Store it somewhere safe.
+
+---
+
 ## Tech Stack
 
 | Category | Technology | Version |
@@ -189,11 +203,12 @@ No ML. No external libraries. Just math that runs in microseconds.
 | Database | Dexie.js (IndexedDB) | 4.4.2 |
 | Encryption | Web Crypto API | Native |
 | Charts | Apache ECharts | tree-shaken imports only |
+| Export | write-excel-file (XLSX) | 4.1.1, lazy chunk |
 | Testing | Vitest + fake-indexeddb | dev-only |
 | Styling | CSS3 + Custom Properties | Native |
 | PWA | Service Worker + Manifest | Native |
 | Forecasting | EWMA + IQR | Custom |
-| Dependencies | 4 runtime (react, react-dom, dexie, echarts) | Minimal |
+| Dependencies | 5 runtime (react, react-dom, dexie, echarts, write-excel-file) | Minimal |
 
 ---
 
@@ -206,17 +221,19 @@ src/
 │   ├── BackupRestore.jsx      # Encrypted backup/restore with lockout integration
 │   ├── ChartsSection.jsx      # ECharts visualizations (trend/category breakdown)
 │   ├── ConfirmDialog.jsx      # Confirmation modal
-│   ├── CurrencyToggle.jsx     # Currency toggle
+│   ├── CurrencySection.jsx    # Currency + VND display mode with live example
 │   ├── Dashboard.jsx          # Main dashboard with balance, form, history, forecast
 │   ├── ErrorBoundary.jsx      # Catches render errors instead of white-screening
 │   ├── Forecast.jsx           # Monthly forecast display
-│   ├── History.jsx            # Transaction history with delete
+│   ├── History.jsx            # Transaction history with inline editing/deletion
 │   ├── LanguageToggle.jsx     # Language toggle
-│   ├── LockScreen.jsx         # PIN entry with exponential lockout
+│   ├── LockScreen.jsx         # Password entry with exponential lockout
+│   ├── Modal.jsx              # Shared modal primitive with focus trap
+│   ├── MoneyInput.jsx         # Amount field with caret-aware masking
 │   ├── MonthPicker.jsx        # Month/year navigation with data-aware highlighting
 │   ├── OnboardingOverlay.jsx  # First-run wizard: language → currency → VND mode
 │   ├── PasswordManager.jsx    # Change password with full re-encryption
-│   ├── SettingsPanel.jsx      # Grouped settings (profile/currency/security/about)
+│   ├── SettingsPanel.jsx      # Grouped settings (profile/currency/security/data/about)
 │   ├── ThemeToggle.jsx        # Dark/light toggle
 │   └── TransactionForm.jsx    # Add transaction form
 ├── context/
@@ -234,6 +251,8 @@ src/
 │   ├── transactions.js        # load/add/update/delete/summary (single decrypt pass)
 │   ├── auth.js               # unlock, setup, shared corruption-aborting rekey
 │   ├── backup.js             # quick-backup create/restore
+│   ├── exportService.js       # vault → downloadable .xlsx (DB-aware, lazy XLSX chunk)
+│   ├── exportWorkbook.js      # pure workbook builders: sheets, cells, row limit
 │   └── errors.js             # typed SessionExpiredError
 ├── hooks/
 │   └── useVaultData.js       # one decrypted vault load, shared by all panels
@@ -245,7 +264,9 @@ src/
 │   ├── chartData.js           # Aggregation for chart inputs
 │   ├── currency.js            # formatMoney() — single money-formatting authority
 │   ├── forecast.js            # EWMA + IQR forecasting engine with user correction
-│   └── lockout.js             # Triple-store anti-brute-force system
+│   ├── lockout.js             # Triple-store anti-brute-force system
+│   ├── moneyInput.js          # Draft sanitization + caret math for amount fields
+│   └── saveFile.js            # saveBlob() — File System Access API with download fallback
 ├── App.jsx                    # Root component with session timeout
 ├── index.css                  # Full application stylesheet
 └── main.jsx                   # Entry point, SW registration, context providers
@@ -264,9 +285,12 @@ tests/                         # Vitest suites (not bundled)
 ├── transactionEditing.test.js # Encrypted edit round-trip, no duplicate rows
 ├── currency.test.js           # All display-mode strings pinned
 ├── moneyInput.test.js         # Draft sanitization, caret math
+├── chartMonthScope.test.js    # Doughnut/top-categories scoped to the picked month
+├── export.test.js             # Workbook builders, row limit, metadata, autoFilter
+├── saveFile.test.js           # Save-destination picker and download fallback
 └── configPersistence.test.js  # Onboarding keys, format matrix, i18n surface completeness
 
-docs/decisions/                # Decision Records (DR-0001…DR-0008)
+docs/decisions/                # Decision Records (DR-0001…DR-0009)
 ```
 
 All components import crypto through the `crypto.js` facade; only the facade's named exports are public. The service layer (`src/services/`) owns all DB access for its domains — components never talk to Dexie directly for vault data, auth, or backups.
@@ -304,9 +328,9 @@ npm test        # watch mode
 npm run test:run # single run (CI)
 ```
 
-Coverage priorities per the V2 brief: crypto round-trips and wrong-password rejection, forecast edge cases (EWMA, IQR outliers, insufficient data), lockout escalation and persistence, database schema/migrations/account isolation, and the full secure-backup lifecycle. Integration tests use low PBKDF2 iteration counts for speed; production constants are pinned by assertion so an accidental change fails the suite.
+Coverage priorities per the V2 brief: crypto round-trips and wrong-password rejection, forecast edge cases (EWMA, IQR outliers, insufficient data), lockout escalation and persistence, database schema/migrations/account isolation, and the full secure-backup lifecycle. Excel-export coverage pins the workbook builders, the row limit and the auto-filter injection, and the save-destination fallback. Integration tests use low PBKDF2 iteration counts for speed; production constants are pinned by assertion so an accidental change fails the suite.
 
-Architecture decisions behind non-trivial changes live in `docs/decisions/` — start there before changing crypto (`DR-0002` constant-time verification), currency semantics (`DR-0003` unit-neutral storage, `DR-0007` scaled-mode K marker), lockout behavior (`DR-0006` unlock unification), the service layer (`DR-0005`), the schema, or the bundle layout (`DR-0008` lazy ECharts).
+Architecture decisions behind non-trivial changes live in `docs/decisions/` — start there before changing crypto (`DR-0002` constant-time verification), currency semantics (`DR-0003` unit-neutral storage, `DR-0007` scaled-mode K marker), lockout behavior (`DR-0006` unlock unification), the service layer (`DR-0005`), the schema, the bundle layout (`DR-0008` lazy ECharts), or the export format (`DR-0009` xlsx export).
 
 ---
 
