@@ -6,17 +6,18 @@
 // The XLSX export chunk graph IS precached (V7): vite.config.js pins
 // stable URLs for its three chunks, and exports must work offline on
 // first use.
-const CACHE_NAME = 'basalt-cache-v7';
+const CACHE_NAME = 'basalt-cache-v8';
 const FILES_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
   '/favicon.svg',
   '/icons.svg',
-  // Self-hosted typefaces (DM Sans + JetBrains Mono) — precached so the
-  // zero-network guarantee holds offline; @font-face in index.css points here.
-  '/fonts/dm-sans-latin.woff2',
-  '/fonts/dm-sans-latin-ext.woff2',
+  // Self-hosted typefaces (IBM Plex Sans + JetBrains Mono) — precached so
+  // the zero-network guarantee holds offline; @font-face points here.
+  '/fonts/ibm-plex-sans-regular.woff2',
+  '/fonts/ibm-plex-sans-medium.woff2',
+  '/fonts/ibm-plex-sans-semibold.woff2',
   '/fonts/jetbrains-mono-latin.woff2',
   '/fonts/jetbrains-mono-latin-ext.woff2',
   '/fonts/jetbrains-mono-vietnamese.woff2',
