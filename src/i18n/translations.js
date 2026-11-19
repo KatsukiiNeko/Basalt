@@ -899,8 +899,8 @@ export const translations = {
 
 
   'form.amountHint.scaled': {
-    en: '(unit: thousand VND)',
-    vi: '(đơn vị: nghìn VNĐ)'
+    en: '(unit: thousand VND; the field shows VND)',
+    vi: '(đơn vị: nghìn VNĐ; ô hiện VNĐ)'
   },
   'form.amountHint.exact': {
     en: '(unit: VND)',

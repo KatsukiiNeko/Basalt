@@ -148,6 +148,7 @@ const TransactionForm = ({ onTransactionAdded }) => {
               key={amountResetKey}
               id="amount"
               currency={currency}
+              scaleThousands={currency === 'VND' && vndDisplayMode !== 'exact'}
               initialValue={form.amount == null ? '' : String(form.amount)}
               onChange={(value) => setForm((f) => ({ ...f, amount: value }))}
               placeholder={t('form.amountPlaceholder')}

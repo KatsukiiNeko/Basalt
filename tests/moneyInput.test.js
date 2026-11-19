@@ -5,7 +5,9 @@ import {
   formatAmountDraft,
   significantCharsBefore,
   caretForSignificantChars,
-  parseAmountDraft
+  dongToThousandsDraft,
+  parseAmountDraft,
+  thousandsToDongDraft
 } from '../src/utils/moneyInput';
 
 describe('allowsDecimals', () => {
@@ -148,5 +150,26 @@ describe('sanitize -> format -> parse round-trip', () => {
     expect(display).toBe('1.000.100'); // presentation
     expect(draft).toBe('1000100');     // state: plain digits
     expect(parseAmountDraft(draft)).toBe(1000100); // storage-bound value
+  });
+});
+
+describe('scaled VND readout conversion', () => {
+  it.each([
+    ['1', '1000'],
+    ['12', '12000'],
+    ['1.5', '1500'],
+    ['', '']
+  ])('thousandsToDongDraft(%p) -> %p', (draft, expected) => {
+    expect(thousandsToDongDraft(draft)).toBe(expected);
+  });
+
+  it.each([
+    ['1000', '1'],
+    ['1500', '1.5'],
+    ['300', '0.3'],
+    ['1500000', '1500'],
+    ['', '']
+  ])('dongToThousandsDraft(%p) -> %p', (draft, expected) => {
+    expect(dongToThousandsDraft(draft)).toBe(expected);
   });
 });

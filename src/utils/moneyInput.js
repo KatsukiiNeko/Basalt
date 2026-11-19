@@ -74,6 +74,23 @@ export function caretForSignificantChars(text, count, currency) {
   return text.length;
 }
 
+// Scaled VND (DR-0003): the user types thousands, but the field shows the
+// resulting đồng amount once they leave or submit it. These two helpers are
+// the only bridge between the thousand draft and that readout.
+export function thousandsToDongDraft(draft) {
+  const thousands = Number(draft);
+  if (!draft || !Number.isFinite(thousands)) return '';
+  return String(Math.round(thousands * 1000));
+}
+
+// Đồng text -> thousand draft, kept as up to three decimals so "1500" is
+// stored as 1.5 thousand and still renders as 1.500 VND.
+export function dongToThousandsDraft(dongDraft) {
+  const dong = Number(dongDraft);
+  if (!dongDraft || !Number.isFinite(dong)) return '';
+  return String(Math.round((dong / 1000) * 1000) / 1000);
+}
+
 // Draft -> stored numeric value. Returns null for an empty/invalid draft so
 // callers can route to their own validation messaging.
 export function parseAmountDraft(draft) {
