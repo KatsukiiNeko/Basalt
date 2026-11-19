@@ -1,0 +1,174 @@
+/* Layout layer: 56 px app bar + ledger workspace with a fixed rail. */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--bg);
+}
+
+.app-bar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  height: 56px;
+  padding: 0 var(--space-5);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-bar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.brand-mark {
+  display: inline-flex;
+  color: var(--accent);
+}
+
+.brand-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.brand-rule {
+  width: 1px;
+  height: 14px;
+  background: var(--border-strong);
+  margin: 0 var(--space-1);
+}
+
+.app-bar-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.workspace {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5) var(--space-9);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.ledger {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.rail {
+  position: sticky;
+  top: calc(56px + var(--space-5));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* Settings is a full-width in-shell view, not a floating panel. */
+.settings-view {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5) var(--space-9);
+}
+
+.settings-view-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-6);
+}
+
+.settings-view-head h2 {
+  font-size: var(--text-xl);
+}
+
+.eyebrow {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-1);
+}
+
+@media (max-width: 1024px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+
+  .rail {
+    position: static;
+  }
+
+  /* Let the mobile order interleave the rail with the ledger:
+     balance, entry, forecast, history, charts. */
+  .workspace {
+    display: flex;
+    flex-direction: column;
+    /* The grid rule's align-items:start would shrink flex items to content. */
+    align-items: stretch;
+  }
+
+  .ledger,
+  .rail {
+    display: contents;
+  }
+
+  .month-ledger { order: 1; }
+  .transaction-form-container { order: 2; }
+  .forecast-container { order: 3; }
+  .transaction-history { order: 4; }
+  .charts-section { order: 5; }
+}
+
+@media (max-width: 720px) {
+  .app-bar {
+    padding: 0 var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .brand-name,
+  .brand-rule {
+    display: none;
+  }
+
+  .app-bar-controls {
+    gap: var(--space-1);
+  }
+
+  .control-text {
+    display: none;
+  }
+
+  .workspace,
+  .settings-view {
+    padding: var(--space-4) var(--space-3) var(--space-8);
+  }
+
+  .ledger {
+    gap: var(--space-5);
+  }
+}
+
+@media (max-width: 420px) {
+  .account-name-badge {
+    max-width: 96px;
+  }
+}

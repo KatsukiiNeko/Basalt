@@ -1,0 +1,168 @@
+/* Basalt design tokens — Appendix B.
+   One stone ramp, one accent, three text roles. No gradients, no glows. */
+
+:root {
+  color-scheme: dark;
+
+  /* Stone ramp (dark room) */
+  --stone-0: #0c0c0e;
+  --stone-1: #121215;
+  --stone-2: #17171b;
+  --stone-3: #1e1e23;
+  --stone-4: #27272d;
+  --stone-5: #35353c;
+  --stone-6: #4a4a53;
+
+  --bg: var(--stone-0);
+  --bg-primary: var(--stone-0);
+  --bg-secondary: var(--stone-1);
+  --surface: var(--stone-2);
+  --surface-raised: var(--stone-3);
+  --surface-hover: var(--stone-4);
+  --border: #26262c;
+  --border-strong: #3a3a42;
+
+  /* Text: three roles only */
+  --text-primary: #ece9e2;
+  --text-secondary: #a8a49b;
+  --text-tertiary: #969088;
+
+  /* One accent */
+  --accent: #814de5;
+  --accent-soft: #b79af0;
+  --accent-wash: rgba(129, 77, 229, 0.14);
+  --accent-line: rgba(129, 77, 229, 0.45);
+  --primary: var(--accent);
+  --primary-light: var(--accent-soft);
+  --primary-glow: var(--accent-wash);
+
+  /* Semantic marks: ink, not traffic lights */
+  --income: #8fbf9f;
+  --income-bg: rgba(143, 191, 159, 0.1);
+  --income-border: rgba(143, 191, 159, 0.32);
+  --income-bg-strong: rgba(143, 191, 159, 0.16);
+  --expense: #d99a8a;
+  --expense-bg: rgba(217, 154, 138, 0.1);
+  --expense-border: rgba(217, 154, 138, 0.32);
+  --expense-bg-strong: rgba(217, 154, 138, 0.16);
+  --warning: #c8a96a;
+  --restore: var(--text-secondary);
+  --restore-bg: var(--surface-raised);
+
+  /* Category marks: a single violet-to-stone ramp */
+  --cat-food: #9a6cf0;
+  --cat-transport: #7f5bc4;
+  --cat-shopping: #6d5a9e;
+  --cat-entertain: #8156d6;
+  --cat-bills: #5d5180;
+  --cat-health: #8f83b3;
+  --cat-travel: #6b6482;
+  --cat-education: #514a63;
+  --cat-gifts: #a58bd8;
+  --cat-other: #6a6672;
+
+  /* Type */
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  --font-numeric: var(--font-mono);
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-md: 1.0625rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.625rem;
+  --text-2xl: 2.125rem;
+  --text-3xl: 2.875rem;
+  --leading-tight: 1.15;
+  --leading-normal: 1.5;
+
+  /* Spacing: 4 px grid */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 2.5rem;
+  --space-8: 3rem;
+  --space-9: 4rem;
+  --space-10: 5rem;
+
+  /* Radius: cut stone, never pills */
+  --radius-sm: 2px;
+  --radius: 4px;
+  --radius-lg: 6px;
+
+  /* Motion */
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 260ms;
+  --ease: cubic-bezier(0.2, 0.6, 0.2, 1);
+
+  /* Legacy aliases still referenced by components */
+  --duration-fast: var(--dur-fast);
+  --duration-normal: var(--dur-base);
+  --duration-slow: var(--dur-slow);
+  --ease-smooth: var(--ease);
+  --ease-out-expo: var(--ease);
+  --ease-out-quart: var(--ease);
+  --ease-spring: var(--ease);
+  --ease-out-back: var(--ease);
+  --shadow-lg: none;
+  --shadow-glow: none;
+  --shadow-glow-lg: none;
+  --gradient-accent: var(--accent);
+  --duration-page: var(--dur-slow);
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+
+  --stone-0: #f4f1ea;
+  --stone-1: #efebe2;
+  --stone-2: #faf8f3;
+  --stone-3: #f2eee5;
+  --stone-4: #e8e2d6;
+  --stone-5: #d8d1c3;
+  --stone-6: #b9b1a2;
+
+  --bg: var(--stone-0);
+  --bg-primary: var(--stone-0);
+  --bg-secondary: var(--stone-1);
+  --surface: var(--stone-2);
+  --surface-raised: var(--stone-3);
+  --surface-hover: var(--stone-4);
+  --border: #ddd6c8;
+  --border-strong: #c4bbab;
+
+  --text-primary: #1b1a18;
+  --text-secondary: #5d584f;
+  --text-tertiary: #6f6a62;
+
+  --accent: #814de5;
+  --accent-soft: #6b3fc4;
+  --accent-wash: rgba(129, 77, 229, 0.09);
+  --accent-line: rgba(129, 77, 229, 0.4);
+
+  --income: #2f6b4f;
+  --income-bg: rgba(47, 107, 79, 0.08);
+  --income-border: rgba(47, 107, 79, 0.3);
+  --income-bg-strong: rgba(47, 107, 79, 0.14);
+  --expense: #963d2c;
+  --expense-bg: rgba(150, 61, 44, 0.08);
+  --expense-border: rgba(150, 61, 44, 0.3);
+  --expense-bg-strong: rgba(150, 61, 44, 0.14);
+  --warning: #7a5a18;
+
+  --cat-food: #814de5;
+  --cat-transport: #7559b8;
+  --cat-shopping: #756b9c;
+  --cat-entertain: #6a47b8;
+  --cat-bills: #68607e;
+  --cat-health: #8a82a1;
+  --cat-travel: #6f6880;
+  --cat-education: #5f586e;
+  --cat-gifts: #9a7fd0;
+  --cat-other: #77716a;
+}
