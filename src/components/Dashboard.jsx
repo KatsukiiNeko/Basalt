@@ -21,19 +21,6 @@ import { saveBlob } from '../utils/saveFile';
 const ChartsSection = lazy(() => import('./ChartsSection'));
 import SettingsPanel from './SettingsPanel';
 
-// Splits formatMoney output into major/minor parts for the hero display.
-// formatMoney appends a currency suffix (" VND" / " USD"), so the minor
-// part must be matched inside the numeric body, never against the suffix.
-const formatBalanceParts = (amount, formatCurrency) => {
-  const formatted = formatCurrency(amount);
-  const body = formatted.replace(/ (VND|USD)$/, '');
-  const match = body.match(/^(.*?)(\.[\d]{2})?$/);
-  if (match) {
-    return { major: match[1], minor: match[2] || '' };
-  }
-  return { major: body, minor: '' };
-};
-
 const Dashboard = ({ onLogout, onSwitchAccount }) => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [accountName, setAccountName] = useState('');
@@ -204,19 +191,22 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
     return count;
   };
 
-  const heroParts = formatBalanceParts(balance.totalBalance, formatCurrency);
-  const incomeParts = formatBalanceParts(balance.income, formatCurrency);
-  const expenseParts = formatBalanceParts(balance.expenses, formatCurrency);
-
   return (
     <div className="dashboard">
       {showOnboarding && (
         <OnboardingOverlay onComplete={() => setShowOnboarding(false)} />
       )}
 
-      <div className="dashboard-header">
-        <div className="dashboard-title-row">
-          <h1>{t('dashboard.title')}</h1>
+      <header className="app-bar">
+        <div className="app-bar-brand">
+          <span className="brand-mark" aria-hidden="true">
+            <svg width="14" height="18" viewBox="0 0 14 18" fill="none" stroke="currentColor" strokeWidth="1.25">
+              <path d="M2 3.5h10M2 9h10M2 14.5h10" />
+              <path d="M4 1.5v15M10 1.5v15" />
+            </svg>
+          </span>
+          <span className="brand-name">{t('dashboard.title')}</span>
+          <span className="brand-rule" aria-hidden="true" />
           {editingName ? (
             <div className="account-edit-inline">
               <input
@@ -230,19 +220,20 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
                 onBlur={handleRename}
                 autoFocus
                 maxLength={50}
+                aria-label={t('accounts.createName')}
               />
             </div>
           ) : (
-            <button className="account-name-badge" onClick={startEditing}>
+            <button className="account-name-badge" onClick={startEditing} title={t('dashboard.renameAccount')}>
               <span>{accountName}</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
               </svg>
             </button>
           )}
         </div>
-        <div className="header-controls">
+        <div className="app-bar-controls">
           <ThemeToggle />
           <LanguageToggle />
           <button
@@ -251,74 +242,71 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
             title={t('settings.title')}
             aria-label={t('settings.title')}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
           </button>
-          <button onClick={onSwitchAccount} className="switch-account-button">
-            {t('accounts.switch')}
+          <button onClick={onSwitchAccount} className="switch-account-button" aria-label={t('accounts.switch')}>
+            <span className="control-text">{t('accounts.switch')}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M16 3h5v5" />
+              <path d="M21 3l-7 7" />
+              <path d="M8 21H3v-5" />
+              <path d="M3 21l7-7" />
+            </svg>
           </button>
-          <button onClick={onLogout} className="logout-button">
-            {t('dashboard.lock')}
+          <button onClick={onLogout} className="logout-button" aria-label={t('dashboard.lock')}>
+            <span className="control-text">{t('dashboard.lock')}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="11" width="18" height="11" rx="1" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
           </button>
         </div>
-      </div>
+      </header>
 
-      <MonthPicker
-        selectedMonth={selectedMonth}
-        selectedYear={selectedYear}
-        onChange={(m, y) => { setSelectedMonth(m); setSelectedYear(y); }}
-        monthData={monthData}
-      />
+      <div className="workspace" hidden={showSettings}>
+        <main className="ledger">
+          <section className="month-ledger" aria-labelledby="ledger-title">
+            <div className="month-ledger-head">
+              <MonthPicker
+                selectedMonth={selectedMonth}
+                selectedYear={selectedYear}
+                onChange={(m, y) => { setSelectedMonth(m); setSelectedYear(y); }}
+                monthData={monthData}
+              />
+              <span className="ledger-folio" id="ledger-title">{t('dashboard.folio')}</span>
+            </div>
 
-      <div className="hero-balance">
-        <div className="hero-balance-label">{t('dashboard.totalBalance')}</div>
-        <div className="hero-balance-value">
-          {heroParts.major}
-          <span className="hero-balance-cents">{heroParts.minor}</span>
-        </div>
-        <div className="hero-balance-sub">
-          <div className="hero-balance-stat">
-            <div className="stat-arrow income">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="19" x2="12" y2="5" />
-                <polyline points="5 12 12 5 19 12" />
-              </svg>
+            <div className="ledger-balance">
+              <div className="ledger-balance-label">{t('dashboard.totalBalance')}</div>
+              <div className="ledger-balance-value">{formatCurrency(balance.totalBalance)}</div>
             </div>
-            <div>
-              <div className="stat-label">+ {t('dashboard.income')}</div>
-              <div className="stat-value income">{incomeParts.major}<span style={{ fontSize: '0.75em', opacity: 0.7 }}>{incomeParts.minor}</span></div>
-            </div>
-          </div>
-          <div className="hero-balance-stat">
-            <div className="stat-arrow expense">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <polyline points="19 12 12 19 5 12" />
-              </svg>
-            </div>
-            <div>
-              <div className="stat-label">- {t('dashboard.expenses')}</div>
-              <div className="stat-value expense">{expenseParts.major}<span style={{ fontSize: '0.75em', opacity: 0.7 }}>{expenseParts.minor}</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="dashboard-content">
-        <div className="left-column">
-          <TransactionForm
-            onTransactionAdded={handleTransactionAdded}
-          />
-        </div>
-        <div className="right-column">
-          <Forecast
-            currentBalance={balance.totalBalance}
+            <dl className="ledger-totals">
+              <div className="ledger-total">
+                <dt>{t('dashboard.income')}</dt>
+                <dd className="income">{formatCurrency(balance.income)}</dd>
+              </div>
+              <div className="ledger-total">
+                <dt>{t('dashboard.expenses')}</dt>
+                <dd className="expense">{formatCurrency(balance.expenses)}</dd>
+              </div>
+            </dl>
+            <div className="ledger-rule" aria-hidden="true" />
+          </section>
+
+          {/* No key={refreshKey}: remounting History on every save wiped its
+              inline-edit state mid-workflow. The transactions prop changing
+              after the vault reload rerenders it in place. */}
+          <History
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}
             transactions={transactions}
+            onEditTransaction={handleHistoryEdited}
           />
+
           <Suspense
             fallback={
               <section className="charts-section">
@@ -332,16 +320,19 @@ const Dashboard = ({ onLogout, onSwitchAccount }) => {
               selectedYear={selectedYear}
             />
           </Suspense>
-          {/* No key={refreshKey}: remounting History on every save wiped its
-              inline-edit state mid-workflow. The transactions prop changing
-              after the vault reload rerenders it in place. */}
-          <History
+        </main>
+
+        <aside className="rail" aria-label={t('dashboard.entryRail')}>
+          <TransactionForm
+            onTransactionAdded={handleTransactionAdded}
+          />
+          <Forecast
+            currentBalance={balance.totalBalance}
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}
             transactions={transactions}
-            onEditTransaction={handleHistoryEdited}
           />
-        </div>
+        </aside>
       </div>
 
       <SettingsPanel
