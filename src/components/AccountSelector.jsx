@@ -154,7 +154,7 @@ const AccountSelector = ({ onAccountSelected }) => {
           <h1>{t('accounts.title')}</h1>
           <div className="empty-state">
             <div className="spinner" style={{ margin: '0 auto' }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-soft)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 12a9 9 0 1 1-6.219-8.56" />
               </svg>
             </div>
@@ -189,14 +189,24 @@ const AccountSelector = ({ onAccountSelected }) => {
           </div>
         ) : (
           <div className="accounts-list">
-            {accounts.map((account, index) => (
+            {accounts.map((account) => (
               <div
                 key={account.id}
                 className={`account-item ${account.id === lastUsedId ? 'last-used' : ''}${selectedId === account.id ? ' selected' : ''}${selectedId && selectedId !== account.id ? ' not-selected' : ''}`}
-                style={{ animationDelay: `${0.1 + index * 0.1}s` }}
               >
                 <div className="account-item-row">
-                  <div className="account-item-clickable" onClick={() => !selectedId && handleSelect(account.id)}>
+                  <div
+                    className="account-item-clickable"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => !selectedId && handleSelect(account.id)}
+                    onKeyDown={(e) => {
+                      if ((e.key === 'Enter' || e.key === ' ') && !selectedId) {
+                        e.preventDefault();
+                        handleSelect(account.id);
+                      }
+                    }}
+                  >
                     <div className="account-item-info">
                       <div className="account-item-name">
                         {account.name}

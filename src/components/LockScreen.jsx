@@ -246,7 +246,7 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="lock-top-actions">
             <ThemeToggle />
             <LanguageToggle />
           </div>
@@ -261,7 +261,7 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
               <line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
-            {t('lock.setPassword')}
+            {t('lock.firstUseHint')}
           </div>
         )}
 
@@ -280,7 +280,7 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
             />
           </div>
 
-          {error && <div className="error-message">{error}</div>}
+          {error && <div className="error-message" role="alert">{error}</div>}
 
           {isLockedOut && (
             <div className="lockout-timer">
@@ -312,7 +312,7 @@ const LockScreen = ({ accountId, onUnlock, onBack }) => {
                   className="reset-confirm-input"
                   autoFocus
                 />
-                {error && <div className="error-message">{error}</div>}
+                {error && <div className="error-message" role="alert">{error}</div>}
                 <div className="reset-confirm-actions">
                   <button className="reset-account-btn" onClick={handleResetAccount}>
                     {t('lock.resetConfirm')}

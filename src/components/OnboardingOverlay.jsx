@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Modal from './Modal';
 import { useLanguage } from '../context/LanguageContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { formatMoney } from '../utils/currency';
@@ -13,8 +14,8 @@ const VND_STEP = 3;
 const EXAMPLE_AMOUNT = 1250000;
 
 const LANGUAGES = [
-  { code: 'EN', labelKey: 'onboarding.lang.en', flag: '🇬🇧' },
-  { code: 'VI', labelKey: 'onboarding.lang.vi', flag: '🇻🇳' }
+  { code: 'EN', labelKey: 'onboarding.lang.en' },
+  { code: 'VI', labelKey: 'onboarding.lang.vi' }
 ];
 
 const CURRENCIES = [
@@ -35,10 +36,11 @@ const VND_MODES = [
   }
 ];
 
+// The Basalt mark: cut courses with two vertical joints.
 const WelcomeIcon = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="12" y1="5" x2="12" y2="19" />
-    <line x1="5" y1="12" x2="19" y2="12" />
+  <svg width="26" height="32" viewBox="0 0 24 30" fill="none" stroke="currentColor" strokeWidth="1.25" aria-hidden="true">
+    <path d="M2 6.5h20M2 15h20M2 23.5h20" />
+    <path d="M8 2v26M17 2v26" />
   </svg>
 );
 
@@ -65,14 +67,22 @@ const ScaleIcon = () => (
   </svg>
 );
 
-const OptionButton = ({ selected, onClick, children }) => (
+const OptionButton = ({ selected, onClick, index, children }) => (
   <button
     type="button"
     className={`onboarding-option ${selected ? 'selected' : ''}`}
     onClick={onClick}
     aria-pressed={selected}
   >
-    {children}
+    <span className="onboarding-option-index" aria-hidden="true">{index}</span>
+    <span className="onboarding-option-body">{children}</span>
+    <span className="onboarding-option-check" aria-hidden="true">
+      {selected && (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      )}
+    </span>
   </button>
 );
 
@@ -105,14 +115,20 @@ const OnboardingOverlay = ({ onComplete }) => {
   const lastStep = currency === 'VND' ? VND_STEP : VND_STEP - 1;
 
   return (
-    <div className="onboarding-overlay">
-      <div className="onboarding-card">
+    <Modal
+      isOpen
+      onClose={complete}
+      overlayClassName="onboarding-overlay"
+      className="onboarding-card"
+      labelledBy="onboarding-title"
+      dismissible={false}
+    >
         {step === 0 && (
           <>
             <div className="onboarding-icon step1">
               <WelcomeIcon />
             </div>
-            <h3>{t('onboarding.welcome')}</h3>
+            <h3 id="onboarding-title">{t('onboarding.welcome')}</h3>
             <p>{t('onboarding.wizardIntro')}</p>
           </>
         )}
@@ -122,18 +138,17 @@ const OnboardingOverlay = ({ onComplete }) => {
             <div className="onboarding-icon step2">
               <GlobeIcon />
             </div>
-            <h3>{t('onboarding.languageTitle')}</h3>
+            <h3 id="onboarding-title">{t('onboarding.languageTitle')}</h3>
             <p>{t('onboarding.languageDesc')}</p>
             <div className="onboarding-options">
-              {LANGUAGES.map(({ code, labelKey, flag }) => (
+              {LANGUAGES.map(({ code, labelKey }, i) => (
                 <OptionButton
                   key={code}
+                  index={`0${i + 1}`}
                   selected={language === code}
                   onClick={() => setLanguage(code)}
                 >
-                  <span className="onboarding-option-flag">{flag}</span>
                   <span className="onboarding-option-label">{t(labelKey)}</span>
-                  {language === code && <span className="onboarding-option-check">✓</span>}
                 </OptionButton>
               ))}
             </div>
@@ -145,17 +160,17 @@ const OnboardingOverlay = ({ onComplete }) => {
             <div className="onboarding-icon step3">
               <CoinIcon />
             </div>
-            <h3>{t('onboarding.currencyTitle')}</h3>
+            <h3 id="onboarding-title">{t('onboarding.currencyTitle')}</h3>
             <p>{t('onboarding.currencyDesc')}</p>
             <div className="onboarding-options">
-              {CURRENCIES.map(({ code, labelKey }) => (
+              {CURRENCIES.map(({ code, labelKey }, i) => (
                 <OptionButton
                   key={code}
+                  index={`0${i + 1}`}
                   selected={currency === code}
                   onClick={() => setCurrency(code)}
                 >
                   <span className="onboarding-option-label">{t(labelKey)}</span>
-                  {currency === code && <span className="onboarding-option-check">✓</span>}
                 </OptionButton>
               ))}
             </div>
@@ -167,12 +182,13 @@ const OnboardingOverlay = ({ onComplete }) => {
             <div className="onboarding-icon step2">
               <ScaleIcon />
             </div>
-            <h3>{t('onboarding.vndMode.title')}</h3>
+            <h3 id="onboarding-title">{t('onboarding.vndMode.title')}</h3>
             <p>{t('onboarding.vndMode.intro')}</p>
             <div className="onboarding-options">
-              {VND_MODES.map(({ mode, titleKey, descKey }) => (
+              {VND_MODES.map(({ mode, titleKey, descKey }, i) => (
                 <OptionButton
                   key={mode}
+                  index={`0${i + 1}`}
                   selected={vndDisplayMode === mode}
                   onClick={() => setVndDisplayMode(mode)}
                 >
@@ -202,8 +218,7 @@ const OnboardingOverlay = ({ onComplete }) => {
             {step < lastStep ? t('onboarding.next') : t('onboarding.done')}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 };
 

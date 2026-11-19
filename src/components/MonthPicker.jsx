@@ -87,7 +87,7 @@ const MonthPicker = ({ selectedMonth, selectedYear, onChange, monthData }) => {
   return (
     <>
       {toast && (
-        <div className={`month-toast ${toast.type}`}>
+        <div className={`month-toast ${toast.type}`} role="status" aria-live="polite">
           {toast.message}
         </div>
       )}
@@ -105,6 +105,8 @@ const MonthPicker = ({ selectedMonth, selectedYear, onChange, monthData }) => {
         <button
           className="month-picker-label"
           onClick={() => setShowDropdown(!showDropdown)}
+          aria-expanded={showDropdown}
+          aria-haspopup="dialog"
         >
           {t('month.' + MONTH_KEYS[selectedMonth])}, {selectedYear}
         </button>
@@ -121,7 +123,7 @@ const MonthPicker = ({ selectedMonth, selectedYear, onChange, monthData }) => {
         </button>
 
         {showDropdown && (
-          <div className="month-picker-dropdown">
+          <div className="month-picker-dropdown" role="dialog" aria-label={t('monthPicker.selectMonth')}>
             <div className="month-picker-year-nav">
               <button onClick={() => selectYear(selectedYear - 1)} className="year-nav-btn">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
