@@ -9,64 +9,68 @@ export const translations = {
     vi: 'Basalt'
   },
   'lock.subtitle': {
-    en: 'Secure Personal Finance Tracker',
-    vi: 'Trình quản lý tài chính cá nhân'
+    en: 'A private ledger, sealed on this device',
+    vi: 'Sổ riêng, niêm phong trên thiết bị này'
   },
   'lock.enterPassword': {
-    en: 'Enter Password:',
-    vi: 'Nhập mật khẩu:'
+    en: 'Password',
+    vi: 'Mật khẩu'
   },
   'lock.passwordPlaceholder': {
     en: 'Enter your PIN or password',
     vi: 'Nhập mã PIN hoặc mật khẩu'
   },
   'lock.unlock': {
-    en: 'Unlock',
+    en: 'Unseal',
     vi: 'Mở khóa'
   },
+  'lock.firstUseHint': {
+    en: 'Choose a password you will remember. It cannot be recovered.',
+    vi: 'Chọn mật khẩu bạn nhớ được. Không thể khôi phục lại.'
+  },
   'lock.setPassword': {
-    en: 'Set Password',
-    vi: 'Cài đặt mật khẩu'
+    en: 'Set a password',
+    vi: 'Đặt mật khẩu'
   },
   'lock.errors.emptyPassword': {
-    en: 'Please enter a password',
-    vi: 'Vui lòng nhập mật khẩu'
+    en: 'Enter your password.',
+    vi: 'Nhập mật khẩu của bạn.'
   },
   'lock.errors.tooShort': {
-    en: 'Password must be at least 4 characters',
-    vi: 'Mật khẩu phải có ít nhất 4 kí tự'
+    en: 'Use at least four characters.',
+    vi: 'Dùng ít nhất bốn ký tự.'
   },
   'lock.errors.locked': {
-    en: 'Account is temporarily locked. Please try again later.',
-    vi: 'Tài khoản tạm thời bị khóa, vui lòng thử lại sau'
+    en: 'This account is locked for now.',
+    vi: 'Tài khoản đang tạm khóa.'
   },
   'lock.errors.corrupted': {
-    en: 'Corrupted data. Please reset the app.',
-    vi: 'Dữ liệu bị lỗi, hãy khởi động lại ứng dụng'
+    en: 'The vault could not be read. Reset the account to continue.',
+    vi: 'Không đọc được hầm. Đặt lại tài khoản để tiếp tục.'
   },
   'lock.errors.invalid': {
-    en: 'Invalid password',
-    vi: 'Sai mật khẩu'
+    en: 'That password does not open this vault.',
+    vi: 'Mật khẩu này không mở được hầm.'
   },
   'lock.errors.tooManyAttempts': {
-    en: 'Too many failed attempts. Account temporarily locked.',
-    vi: 'Quá số lần sai mật khẩu. Tài khoản tạm thời bị khóa.'
+    en: 'Too many failed attempts. The account is locked for now.',
+    vi: 'Sai quá nhiều lần. Tài khoản đang tạm khóa.'
   },
   'lock.errors.unlockFailed': {
-    en: 'Failed to unlock. Please try again.',
-    vi: 'Không thể mở khóa, hãy thử lại sau'
+    en: 'The vault did not open. Try again.',
+    vi: 'Hầm chưa mở. Hãy thử lại.'
   },
   'lock.lockoutTimer': {
-    en: 'Account locked. Try again in: {seconds}s',
-    vi: 'Tài khoản bị khóa, thử lại sau: {seconds}s'
+    en: 'Locked. Try again in {seconds}s.',
+    vi: 'Đang khóa. Thử lại sau {seconds}s.'
   },
   'lock.info.encrypted': {
-    en: 'Your financial data is encrypted and stored locally on your device.',
-    vi: 'Dữ liệu đã được mã hóa và lưu trữ trên thiết bị của bạn'
+    en: 'The ledger is encrypted and kept on this device.',
+    vi: 'Sổ được mã hóa và lưu trên thiết bị này.'
   },
   'lock.info.noServer': {
-    en: 'No data is sent to any server.',
-    vi: 'Không dữ liệu nào được gửi đến máy chủ'
+    en: 'Nothing is sent to a server.',
+    vi: 'Không có gì được gửi đến máy chủ.'
   },
 
   'dashboard.title': {
@@ -77,134 +81,126 @@ export const translations = {
     en: 'Lock',
     vi: 'Khóa'
   },
+  'dashboard.renameAccount': {
+    en: 'Rename account',
+    vi: 'Đổi tên tài khoản'
+  },
+  'dashboard.folio': {
+    en: 'Monthly ledger',
+    vi: 'Sổ tháng'
+  },
+  'dashboard.entryRail': {
+    en: 'Entry and forecast',
+    vi: 'Ghi chép và dự báo'
+  },
   'dashboard.totalBalance': {
-    en: 'Total Balance',
-    vi: 'Tổng số tiền'
+    en: 'Balance',
+    vi: 'Số dư'
   },
   'dashboard.income': {
     en: 'Income',
-    vi: 'Nguồn tiền vào'
+    vi: 'Thu'
   },
   'dashboard.expenses': {
     en: 'Expenses',
-    vi: 'Nguồn tiền ra'
+    vi: 'Chi tiêu'
   },
   'dashboard.net': {
     en: 'Net',
-    vi: 'Thuần'
+    vi: 'Chênh lệch'
   },
   'dashboard.monthlyTrend': {
-    en: 'Monthly Trend',
-    vi: 'Xu hướng hàng tháng'
+    en: 'Six-month trend',
+    vi: 'Xu hướng sáu tháng'
   },
   'dashboard.spendingBreakdown': {
-    en: 'Spending Breakdown',
-    vi: 'Phân tích chi tiêu'
+    en: 'Where it went',
+    vi: 'Chi tiêu theo danh mục'
   },
   'dashboard.topCategories': {
-    en: 'Top Spending Categories',
-    vi: 'Danh mục chi tiêu hàng đầu'
+    en: 'Largest categories',
+    vi: 'Danh mục lớn nhất'
   },
   'dashboard.totalExpenses': {
-    en: 'Total Expenses',
-    vi: 'Tổng chi tiêu'
+    en: 'Total out',
+    vi: 'Tổng chi'
   },
   'dashboard.ofTotal': {
     en: 'of total',
-    vi: 'trên tổng số'
-  },
-  'dashboard.sessionExpired': {
-    en: 'Session expired',
-    vi: 'Phiên đăng nhập đã hết hạn'
+    vi: 'trên tổng'
   },
   'dashboard.noFileSelected': {
-    en: 'No file selected',
-    vi: 'Không có tệp nào được chọn'
+    en: 'No file chosen.',
+    vi: 'Chưa chọn tệp.'
   },
   'dashboard.invalidBackupFormat': {
-    en: 'Invalid backup file format',
-    vi: 'Định dạng tệp sao lưu không hợp lệ'
-  },
-  'dashboard.invalidBackupData': {
-    en: 'Invalid backup data structure',
-    vi: 'Cấu trúc dữ liệu sao lưu không hợp lệ'
-  },
-  'dashboard.restoreFailed': {
-    en: 'Failed to restore: ',
-    vi: 'Khôi phục thất bại: '
+    en: 'This file is not a Basalt backup.',
+    vi: 'Tệp này không phải bản sao lưu Basalt.'
   },
 
   'form.title': {
-    en: 'Add Transaction',
-    vi: 'Thêm giao dịch'
+    en: 'Record entry',
+    vi: 'Ghi lại'
   },
   'form.date': {
-    en: 'Date:',
-    vi: 'Ngày:'
+    en: 'Date',
+    vi: 'Ngày'
   },
   'form.type': {
-    en: 'Type:',
-    vi: 'Loại:'
+    en: 'Type',
+    vi: 'Loại'
   },
   'form.expense': {
     en: 'Expense',
-    vi: 'Chi tiêu'
+    vi: 'Chi'
   },
   'form.income': {
     en: 'Income',
     vi: 'Thu nhập'
   },
   'form.category': {
-    en: 'Category:',
-    vi: 'Danh mục:'
+    en: 'Category',
+    vi: 'Danh mục'
   },
   'form.selectCategory': {
-    en: 'Select a category',
-    vi: 'Chọn danh mục'
+    en: 'Choose one',
+    vi: 'Chọn một mục'
   },
   'form.amount': {
-    en: 'Amount:',
-    vi: 'Số tiền:'
+    en: 'Amount',
+    vi: 'Số tiền'
   },
   'form.note': {
-    en: 'Note:',
-    vi: 'Ghi chú:'
+    en: 'Note',
+    vi: 'Ghi chú'
   },
   'form.notePlaceholder': {
-    en: 'Optional note',
-    vi: 'Ghi chú (tùy chọn)'
+    en: 'Optional',
+    vi: 'Không bắt buộc'
   },
   'form.submit': {
-    en: 'Add Transaction',
-    vi: 'Thêm giao dịch'
+    en: 'Record entry',
+    vi: 'Ghi lại'
   },
   'form.errors.invalidAmount': {
-    en: 'Please enter a valid amount',
-    vi: 'Vui lòng nhập số tiền hợp lệ'
+    en: 'Enter an amount greater than zero.',
+    vi: 'Nhập số tiền lớn hơn không.'
   },
   'form.errors.selectCategory': {
-    en: 'Please select a category',
-    vi: 'Vui lòng chọn danh mục'
-  },
-  'form.errors.sessionExpired': {
-    en: 'Session expired. Please unlock again.',
-    vi: 'Phiên đăng nhập đã hết hạn. Vui lòng mở khóa lại.'
+    en: 'Choose a category first.',
+    vi: 'Chọn danh mục trước.'
   },
   'form.success.added': {
-    en: 'Transaction added successfully!',
-    vi: 'Thêm giao dịch thành công!'
+    en: 'Entry recorded.',
+    vi: 'Đã ghi lại.'
   },
   'form.errors.addFailed': {
-    en: 'Failed to add transaction. Please try again.',
-    vi: 'Thêm giao dịch thất bại. Vui lòng thử lại.'
+    en: 'The entry was not recorded. Try again.',
+    vi: 'Chưa ghi được. Hãy thử lại.'
   },
   'form.errors.selectDate': {
-    en: 'Please choose a valid date.',
-    vi: 'Vui lòng chọn ngày hợp lệ.'
-  },
-  'form.errors.invalidTransaction': {
-    en: 'Invalid transaction data. Please try again.',
-    vi: 'Dữ liệu giao dịch không hợp lệ. Vui lòng thử lại.'
+    en: 'Choose a valid date.',
+    vi: 'Chọn một ngày hợp lệ.'
   },
   'history.edit': {
     en: 'Edit',
@@ -216,12 +212,12 @@ export const translations = {
     vi: 'Xong'
   },
   'history.editHint': {
-    en: 'Tap an amount, category, or note to edit it.',
-    vi: 'Chạm vào số tiền, danh mục hoặc ghi chú để sửa.'
+    en: 'Click an amount, category, or note to edit it.',
+    vi: 'Nhấn vào số tiền, danh mục hoặc ghi chú để sửa.'
   },
   'history.addNoteHint': {
-    en: 'Add note',
-    vi: 'Thêm ghi chú'
+    en: 'No note',
+    vi: 'Không ghi chú'
   },
 
   'cat.foodDining': {
@@ -274,36 +270,24 @@ export const translations = {
   },
 
   'history.title': {
-    en: 'Transaction History',
-    vi: 'Lịch sử giao dịch'
-  },
-  'history.loading': {
-    en: 'Loading transactions...',
-    vi: 'Đang tải giao dịch...'
-  },
-  'history.empty': {
-    en: 'No transactions found.',
-    vi: 'Không tìm thấy giao dịch nào.'
+    en: 'This month’s entries',
+    vi: 'Ghi chép tháng này'
   },
   'history.errors.sessionExpired': {
     en: 'Session expired. Please unlock again.',
     vi: 'Phiên đăng nhập đã hết hạn. Vui lòng mở khóa lại.'
   },
-  'history.errors.loadFailed': {
-    en: 'Failed to load transactions',
-    vi: 'Tải giao dịch thất bại'
-  },
   'history.errors.deleteFailed': {
-    en: 'Failed to delete transaction',
-    vi: 'Xóa giao dịch thất bại'
+    en: 'The entry was not deleted.',
+    vi: 'Chưa xóa được ghi chép.'
   },
   'history.errors.updateFailed': {
-    en: 'Failed to update transaction. Please try again.',
-    vi: 'Cập nhật giao dịch thất bại. Vui lòng thử lại.'
+    en: 'The change was not saved. Try again.',
+    vi: 'Chưa lưu được thay đổi. Hãy thử lại.'
   },
   'history.delete': {
-    en: 'Delete transaction',
-    vi: 'Xóa giao dịch'
+    en: 'Delete entry',
+    vi: 'Xóa ghi chép'
   },
   'history.deleteConfirm': {
     en: 'Confirm delete',
@@ -311,32 +295,28 @@ export const translations = {
   },
 
   'forecast.title': {
-    en: 'Monthly Forecast',
-    vi: 'Dự báo theo tháng'
-  },
-  'forecast.loading': {
-    en: 'Loading forecast data...',
-    vi: 'Đang tải dữ liệu dự báo...'
+    en: 'Month forecast',
+    vi: 'Dự báo tháng'
   },
   'forecast.noData': {
-    en: 'No data available',
-    vi: 'Không có dữ liệu'
+    en: 'No data yet',
+    vi: 'Chưa có dữ liệu'
   },
   'forecast.currentBalance': {
-    en: 'Current Balance:',
-    vi: 'Số dư hiện tại:'
+    en: 'Current balance',
+    vi: 'Số dư hiện tại'
   },
   'forecast.projectedBalance': {
-    en: 'Projected End-of-Month Balance:',
-    vi: 'Số dư dự kiến cuối tháng:'
+    en: 'Projected at month end',
+    vi: 'Dự kiến cuối tháng'
   },
   'forecast.dailyAverage': {
-    en: 'Daily Average Spending:',
-    vi: 'Chi tiêu trung bình mỗi ngày:'
+    en: 'Daily average',
+    vi: 'Trung bình mỗi ngày'
   },
   'forecast.daysRemaining': {
-    en: 'Days Remaining:',
-    vi: 'Số ngày còn lại:'
+    en: 'Days remaining',
+    vi: 'Số ngày còn lại'
   },
   'forecast.perDay': {
     en: '/day',
@@ -347,44 +327,40 @@ export const translations = {
     vi: 'ngày'
   },
   'forecast.overspending': {
-    en: 'Overspending',
-    vi: 'Chi tiêu quá mức'
+    en: 'Above pace',
+    vi: 'Vượt nhịp'
   },
   'forecast.onTrack': {
-    en: 'On Track',
-    vi: 'Đúng kế hoạch'
+    en: 'On pace',
+    vi: 'Đúng nhịp'
   },
   'forecast.spendingPace': {
-    en: 'Spending Pace:',
-    vi: 'Tốc độ chi tiêu:'
+    en: 'Pace',
+    vi: 'Nhịp chi'
   },
   'forecast.typicalSpending': {
-    en: 'Typical Monthly:',
-    vi: 'Trung bình tháng:'
+    en: 'Typical month',
+    vi: 'Tháng thường lệ'
   },
   'forecast.projectedSpending': {
-    en: 'Projected This Month:',
-    vi: 'Dự kiến tháng này:'
+    en: 'Projected this month',
+    vi: 'Dự kiến tháng này'
   },
   'forecast.noBaseline': {
     en: 'N/A — not enough history',
     vi: 'N/A — chưa đủ dữ liệu'
   },
   'forecast.noBaselineData': {
-    en: 'No baseline data',
-    vi: 'Không có dữ liệu tham chiếu'
-  },
-  'forecast.needsMoreData': {
-    en: 'Based on limited data',
-    vi: 'Dựa trên dữ liệu hạn chế'
+    en: 'No baseline yet',
+    vi: 'Chưa có mốc so sánh'
   },
 
   'password.toggleLabel': {
-    en: 'Change Password',
+    en: 'Change password',
     vi: 'Đổi mật khẩu'
   },
   'password.currentLabel': {
-    en: 'Current Password',
+    en: 'Current password',
     vi: 'Mật khẩu hiện tại'
   },
   'password.currentPlaceholder': {
@@ -392,7 +368,7 @@ export const translations = {
     vi: 'Nhập mật khẩu hiện tại'
   },
   'password.newLabel': {
-    en: 'New Password',
+    en: 'New password',
     vi: 'Mật khẩu mới'
   },
   'password.newPlaceholder': {
@@ -400,128 +376,120 @@ export const translations = {
     vi: 'Nhập mật khẩu mới'
   },
   'password.confirmLabel': {
-    en: 'Confirm New Password',
-    vi: 'Xác nhận mật khẩu mới'
+    en: 'Repeat new password',
+    vi: 'Nhập lại mật khẩu mới'
   },
   'password.confirmPlaceholder': {
     en: 'Confirm new password',
     vi: 'Xác nhận mật khẩu mới'
   },
   'password.update': {
-    en: 'Update Password',
+    en: 'Update password',
     vi: 'Cập nhật mật khẩu'
   },
   'password.reEncrypting': {
-    en: 'Re-encrypting...',
-    vi: 'Đang mã hóa lại...'
+    en: 'Re-encrypting…',
+    vi: 'Đang mã hóa lại…'
   },
   'password.errors.required': {
-    en: 'All fields are required',
-    vi: 'Vui lòng điền đầy đủ thông tin'
+    en: 'Fill in all three fields.',
+    vi: 'Điền đủ ba trường.'
   },
   'password.errors.mismatch': {
-    en: 'New passwords do not match',
-    vi: 'Mật khẩu mới không khớp'
+    en: 'The new passwords do not match.',
+    vi: 'Mật khẩu mới không khớp.'
   },
   'password.errors.tooShort': {
-    en: 'New password must be at least 4 characters',
-    vi: 'Mật khẩu mới phải có ít nhất 4 kí tự'
-  },
-  'password.errors.notSet': {
-    en: 'No password has been set yet',
-    vi: 'Chưa cài đặt mật khẩu'
+    en: 'Use at least four characters.',
+    vi: 'Dùng ít nhất bốn ký tự.'
   },
   'password.errors.incorrect': {
-    en: 'Current password is incorrect',
-    vi: 'Mật khẩu hiện tại không đúng'
+    en: 'The current password is incorrect.',
+    vi: 'Mật khẩu hiện tại không đúng.'
   },
   'password.errors.decryptFailed': {
-    en: 'Failed to decrypt some transactions. Aborting password change.',
-    vi: 'Không thể giải mã một số giao dịch. Hủy đổi mật khẩu.'
+    en: 'Some entries could not be decrypted. The password was not changed.',
+    vi: 'Không giải mã được một số ghi chép. Mật khẩu chưa đổi.'
   },
   'password.success.changed': {
-    en: 'Password changed successfully. All data re-encrypted.',
-    vi: 'Đổi mật khẩu thành công. Dữ liệu đã được mã hóa lại.'
+    en: 'Password changed. All entries were re-encrypted.',
+    vi: 'Đã đổi mật khẩu. Toàn bộ ghi chép đã mã hóa lại.'
   },
   'password.errors.changeFailed': {
-    en: 'Failed to change password: ',
+    en: 'Password change failed: ',
     vi: 'Đổi mật khẩu thất bại: '
   },
   'password.errors.cooldown': {
-    en: 'Too many attempts. Wait {seconds}s before trying again.',
-    vi: 'Quá số lần thử. Đợi {seconds}s trước khi thử lại.'
+    en: 'Too many attempts. Wait {seconds}s.',
+    vi: 'Thử quá nhiều lần. Đợi {seconds}s.'
   },
   'password.errors.tooManyAttempts': {
-    en: 'Maximum attempts reached. Close and reopen the app to try again.',
-    vi: 'Đã đạt số lần thử tối đa. Đóng và mở lại ứng dụng để thử lại.'
+    en: 'Attempt limit reached. Reopen Basalt to try again.',
+    vi: 'Đã hết lượt thử. Mở lại Basalt để thử tiếp.'
   },
 
   'backup.title': {
-    en: 'Backup & Restore',
-    vi: 'Sao lưu & Khôi phục'
+    en: 'Backup and restore',
+    vi: 'Sao lưu và khôi phục'
   },
   'backup.backupBtn': {
-    en: 'Backup Data',
-    vi: 'Sao lưu dữ liệu'
+    en: 'Backup',
+    vi: 'Sao lưu'
   },
   'backup.backupBtnLoading': {
-    en: 'Backing up...',
-    vi: 'Đang sao lưu...'
+    en: 'Backing up…',
+    vi: 'Đang sao lưu…'
   },
   'backup.restoreBtn': {
-    en: 'Restore Data',
-    vi: 'Khôi phục dữ liệu'
+    en: 'Restore',
+    vi: 'Khôi phục'
   },
   'backup.restoreBtnLoading': {
-    en: 'Restoring...',
-    vi: 'Đang khôi phục...'
+    en: 'Restoring…',
+    vi: 'Đang khôi phục…'
   },
   'backup.creating': {
-    en: 'Creating backup...',
-    vi: 'Đang tạo bản sao lưu...'
+    en: 'Writing backup…',
+    vi: 'Đang ghi bản sao lưu…'
   },
   'backup.success': {
-    en: 'Backup created successfully!',
-    vi: 'Tạo bản sao lưu thành công!'
+    en: 'Backup written.',
+    vi: 'Đã ghi bản sao lưu.'
   },
   'backup.failedPrefix': {
     en: 'Backup failed: ',
     vi: 'Sao lưu thất bại: '
   },
-  'backup.confirmRestore': {
-    en: 'Restoring will replace all current data. Continue?',
-    vi: 'Khôi phục sẽ thay thế toàn bộ dữ liệu hiện tại. Tiếp tục?'
-  },
   'backup.restoreStarted': {
-    en: 'Restore started...',
-    vi: 'Bắt đầu khôi phục...'
+    en: 'Restoring…',
+    vi: 'Bắt đầu khôi phục…'
   },
   'backup.restoreSuccess': {
-    en: 'Restore completed! {count} transactions restored.',
-    vi: 'Khôi phục thành công! {count} giao dịch đã được khôi phục.'
+    en: 'Restore complete. {count} entries returned.',
+    vi: 'Khôi phục xong. {count} ghi chép đã trở lại.'
   },
   'backup.failedRestorePrefix': {
     en: 'Restore failed: ',
     vi: 'Khôi phục thất bại: '
   },
   'backup.secureBackupBtn': {
-    en: 'Secure Backup',
-    vi: 'Sao lưu bảo mật'
+    en: 'Encrypted backup',
+    vi: 'Sao lưu mã hóa'
   },
   'backup.secureBackupTitle': {
-    en: 'Create Secure Backup',
-    vi: 'Tạo bản sao lưu bảo mật'
+    en: 'Write an encrypted backup',
+    vi: 'Ghi bản sao lưu mã hóa'
   },
   'backup.secureRestoreTitle': {
-    en: 'Restore Secure Backup',
-    vi: 'Khôi phục bản sao lưu bảo mật'
+    en: 'Restore an encrypted backup',
+    vi: 'Khôi phục bản sao lưu mã hóa'
   },
   'backup.enterPassword': {
-    en: 'Backup Password',
+    en: 'Backup password',
     vi: 'Mật khẩu sao lưu'
   },
   'backup.confirmPassword': {
-    en: 'Confirm Password',
+    en: 'Confirm password',
     vi: 'Xác nhận mật khẩu'
   },
   'backup.passwordPlaceholder': {
@@ -529,32 +497,28 @@ export const translations = {
     vi: 'Nhập mật khẩu sao lưu'
   },
   'backup.confirmPlaceholder': {
-    en: 'Re-enter password',
+    en: 'Repeat password',
     vi: 'Nhập lại mật khẩu'
   },
   'backup.passwordTooShort': {
-    en: 'Password must be at least 8 characters',
-    vi: 'Mật khẩu phải có ít nhất 8 ký tự'
+    en: 'Use at least eight characters.',
+    vi: 'Dùng ít nhất tám ký tự.'
   },
   'backup.passwordMismatch': {
-    en: 'Passwords do not match',
-    vi: 'Mật khẩu không khớp'
+    en: 'The passwords do not match.',
+    vi: 'Mật khẩu không khớp.'
   },
   'backup.createBtn': {
-    en: 'Create Backup',
-    vi: 'Tạo bản sao lưu'
+    en: 'Write backup',
+    vi: 'Ghi bản sao lưu'
   },
   'backup.processing': {
-    en: 'Processing...',
-    vi: 'Đang xử lý...'
+    en: 'Working…',
+    vi: 'Đang xử lý…'
   },
   'backup.restoring': {
     en: 'Restoring...',
     vi: 'Đang khôi phục...'
-  },
-  'backup.cooldown': {
-    en: 'Too many attempts. Wait {seconds}s.',
-    vi: 'Quá số lần thử. Đợi {seconds}s.'
   },
   'backup.lockout.session_limit': {
     en: 'Maximum attempts reached. Close and reopen the app to try again.',
@@ -562,19 +526,19 @@ export const translations = {
   },
   'backup.lockout.time_lockout': {
     en: 'Too many failed attempts. Wait {seconds}s.',
-    vi: 'Quá số lần thử sai. Đợi {seconds}s.'
+    vi: 'Sai quá nhiều lần. Đợi {seconds}s.'
   },
   'backup.powProgress': {
-    en: 'Computing verification... ({seconds}s elapsed)',
-    vi: 'Đang tính toán xác minh... ({seconds}s)'
+    en: 'Verifying… {seconds}s',
+    vi: 'Đang xác minh… {seconds}s'
   },
   'backup.powFailed': {
-    en: 'Verification computation failed. Please try again.',
-    vi: 'Tính toán xác minh thất bại. Vui lòng thử lại.'
+    en: 'Verification failed. Try again.',
+    vi: 'Xác minh thất bại. Hãy thử lại.'
   },
   'backup.escalatedDeriving': {
-    en: 'Deriving key (enhanced security)...',
-    vi: 'Đang tạo khóa (bảo mật nâng cao)...'
+    en: 'Deriving key with extra work…',
+    vi: 'Đang tạo khóa với chi phí cao hơn…'
   },
   'backup.accountName': {
     en: 'Account',
@@ -586,36 +550,36 @@ export const translations = {
   },
 
   'export.button': {
-    en: 'Export, Excel (.xlsx)',
-    vi: 'Xuất, Excel (.xlsx)'
+    en: 'Export spreadsheet (.xlsx)',
+    vi: 'Xuất bảng tính (.xlsx)'
   },
   'export.exporting': {
-    en: 'Exporting...',
-    vi: 'Đang xuất...'
+    en: 'Exporting…',
+    vi: 'Đang xuất…'
   },
   'export.success': {
-    en: 'Exported {filename} ({count} transactions).',
-    vi: 'Đã xuất {filename} ({count} giao dịch).'
+    en: 'Exported {filename} with {count} entries.',
+    vi: 'Đã xuất {filename} với {count} ghi chép.'
   },
   'export.empty': {
-    en: 'Nothing to export yet.',
-    vi: 'Chưa có gì để xuất.'
+    en: 'No entries to export yet.',
+    vi: 'Chưa có ghi chép để xuất.'
   },
   'export.cancelled': {
-    en: 'Save cancelled — no file was written.',
-    vi: 'Đã hủy lưu — không có tệp nào được ghi.'
+    en: 'Save cancelled. No file was written.',
+    vi: 'Đã hủy lưu. Không có tệp nào được ghi.'
   },
   'export.failedPrefix': {
     en: 'Export failed: ',
     vi: 'Xuất thất bại: '
   },
   'export.rowLimit': {
-    en: 'Too many rows to export in one file (limit 1,048,576).',
-    vi: 'Quá nhiều hàng để xuất vào một tệp (giới hạn 1.048.576).'
+    en: 'One file holds at most 1,048,576 rows.',
+    vi: 'Một tệp chứa tối đa 1.048.576 hàng.'
   },
   'export.privacyNotice': {
-    en: 'The exported .xlsx file is not encrypted — store it somewhere safe.',
-    vi: 'Tệp .xlsx xuất ra không được mã hóa — hãy lưu ở nơi an toàn.'
+    en: 'The .xlsx file is not encrypted. Store it somewhere safe.',
+    vi: 'Tệp .xlsx không được mã hóa. Hãy cất ở nơi an toàn.'
   },
 
   'accounts.title': {
@@ -623,116 +587,108 @@ export const translations = {
     vi: 'Basalt'
   },
   'accounts.selectPrompt': {
-    en: 'Select an account',
-    vi: 'Chọn tài khoản'
+    en: 'Open an account',
+    vi: 'Mở một tài khoản'
   },
   'accounts.create': {
-    en: 'Create New Account',
-    vi: 'Tạo tài khoản mới'
+    en: 'New account',
+    vi: 'Tài khoản mới'
   },
   'accounts.createName': {
-    en: 'Account Name',
+    en: 'Account name',
     vi: 'Tên tài khoản'
   },
   'accounts.createNamePlaceholder': {
-    en: 'e.g. Personal, Business',
-    vi: 'vd: Cá nhân, Kinh doanh'
+    en: 'Personal, household, study…',
+    vi: 'Cá nhân, gia đình, học tập…'
   },
   'accounts.createBtn': {
-    en: 'Create Account',
+    en: 'Create account',
     vi: 'Tạo tài khoản'
   },
   'accounts.delete': {
-    en: 'Delete Account',
+    en: 'Delete account',
     vi: 'Xóa tài khoản'
   },
   'accounts.deleteConfirm': {
-    en: 'Delete "{name}"? All transactions will be permanently deleted.',
-    vi: 'Xóa "{name}"? Tất cả giao dịch sẽ bị xóa vĩnh viễn.'
+    en: 'Delete “{name}” and every entry in it? This cannot be undone.',
+    vi: 'Xóa “{name}” và toàn bộ ghi chép bên trong? Không thể hoàn tác.'
   },
   'accounts.deletePasswordPrompt': {
-    en: 'Enter password to confirm',
+    en: 'Enter the password to confirm',
     vi: 'Nhập mật khẩu để xác nhận'
   },
   'accounts.empty': {
-    en: 'No accounts yet. Create your first account to get started.',
-    vi: 'Chưa có tài khoản. Tạo tài khoản đầu tiên để bắt đầu.'
+    en: 'No accounts yet. Create the first one.',
+    vi: 'Chưa có tài khoản. Hãy tạo tài khoản đầu tiên.'
   },
   'accounts.createdAt': {
-    en: 'Created',
-    vi: 'Ngày tạo'
+    en: 'Opened',
+    vi: 'Ngày mở'
   },
   'accounts.switch': {
-    en: 'Switch Account',
-    vi: 'Đổi tài khoản'
+    en: 'Switch',
+    vi: 'Đổi'
   },
   'accounts.errors.nameRequired': {
-    en: 'Please enter an account name',
-    vi: 'Vui lòng nhập tên tài khoản'
+    en: 'Enter an account name.',
+    vi: 'Nhập tên tài khoản.'
   },
   'accounts.errors.nameTooLong': {
-    en: 'Account name must be 50 characters or less',
-    vi: 'Tên tài khoản phải từ 50 ký tự trở xuống'
+    en: 'Use 50 characters or fewer.',
+    vi: 'Dùng tối đa 50 ký tự.'
   },
   'accounts.errors.createFailed': {
-    en: 'Failed to create account',
-    vi: 'Tạo tài khoản thất bại'
+    en: 'The account was not created.',
+    vi: 'Chưa tạo được tài khoản.'
   },
   'accounts.errors.deleteFailed': {
-    en: 'Failed to delete account',
-    vi: 'Xóa tài khoản thất bại'
+    en: 'The account was not deleted.',
+    vi: 'Chưa xóa được tài khoản.'
   },
   'accounts.errors.wrongPassword': {
-    en: 'Incorrect password',
-    vi: 'Sai mật khẩu'
+    en: 'Incorrect password.',
+    vi: 'Sai mật khẩu.'
   },
   'accounts.cancel': {
     en: 'Cancel',
     vi: 'Hủy'
   },
   'accounts.lastUsed': {
-    en: 'Last used',
-    vi: 'Dùng gần đây'
+    en: 'Last opened',
+    vi: 'Mở gần đây'
   },
 
   'lock.errors.tokenMissing': {
-    en: 'Data corrupted. Account reset required.',
-    vi: 'Dữ liệu bị lỗi. Cần đặt lại tài khoản.'
+    en: 'The vault is unreadable. The account must be reset.',
+    vi: 'Không đọc được hầm. Cần đặt lại tài khoản.'
   },
   'lock.resetAccount': {
-    en: 'Reset Account',
+    en: 'Reset account',
     vi: 'Đặt lại tài khoản'
   },
   'lock.resetConfirm': {
-    en: 'This will permanently delete all data for this account. Continue?',
-    vi: 'Thao tác này sẽ xóa vĩnh viễn tất cả dữ liệu của tài khoản này. Tiếp tục?'
+    en: 'This erases every entry in the account. Continue?',
+    vi: 'Thao tác này xóa toàn bộ ghi chép của tài khoản. Tiếp tục?'
   },
   'lock.resetConfirmType': {
-    en: 'Type "{name}" to confirm permanent deletion:',
-    vi: 'Nhập "{name}" để xác nhận xóa vĩnh viễn:'
+    en: 'Type “{name}” to confirm:',
+    vi: 'Nhập “{name}” để xác nhận:'
   },
   'lock.resetNameMismatch': {
-    en: 'Account name does not match. Type the exact name shown.',
-    vi: 'Tên tài khoản không khớp. Nhập chính xác tên hiển thị.'
+    en: 'The name does not match. Type it exactly as shown.',
+    vi: 'Tên không khớp. Nhập chính xác như hiển thị.'
   },
 
-  'dashboard.switchAccount': {
-    en: 'Switch Account',
-    vi: 'Đổi tài khoản'
-  },
 
-  'session.timeoutWarning': {
-    en: 'Session expired due to inactivity',
-    vi: 'Phiên đã hết hạn do không hoạt động'
-  },
 
   'onboarding.welcome': {
-    en: 'Welcome to Basalt',
-    vi: 'Chào mừng đến với Basalt'
+    en: 'This is Basalt',
+    vi: 'Đây là Basalt'
   },
   'onboarding.getStarted': {
-    en: 'Let\'s get you set up',
-    vi: 'Hãy bắt đầu thiết lập'
+    en: 'A few choices before the first entry.',
+    vi: 'Vài lựa chọn trước ghi chép đầu tiên.'
   },
   'onboarding.skip': {
     en: 'Skip',
@@ -740,24 +696,24 @@ export const translations = {
   },
   'onboarding.next': {
     en: 'Next',
-    vi: 'Tiếp theo'
+    vi: 'Tiếp'
   },
   'onboarding.done': {
-    en: 'Get Started',
-    vi: 'Bắt đầu'
+    en: 'Open the ledger',
+    vi: 'Mở sổ'
   },
 
   'onboarding.wizardIntro': {
-    en: 'Let\'s set a few things up first. It only takes a moment.',
-    vi: 'Hãy thiết lập một vài điều trước. Chỉ mất một chút thời gian.'
+    en: 'Language, currency, and how amounts are written. You can change any of it later.',
+    vi: 'Ngôn ngữ, tiền tệ và cách viết số tiền. Có thể đổi lại sau.'
   },
   'onboarding.languageTitle': {
-    en: 'Choose Your Language',
-    vi: 'Chọn ngôn ngữ của bạn'
+    en: 'Language',
+    vi: 'Ngôn ngữ'
   },
   'onboarding.languageDesc': {
-    en: 'You can change this anytime in Settings.',
-    vi: 'Bạn có thể thay đổi bất cứ lúc nào trong Cài đặt.'
+    en: 'You can change this later in Settings.',
+    vi: 'Có thể đổi sau trong Cài đặt.'
   },
   'onboarding.lang.en': {
     en: 'English',
@@ -768,12 +724,12 @@ export const translations = {
     vi: 'Tiếng Việt'
   },
   'onboarding.currencyTitle': {
-    en: 'Choose Your Currency',
-    vi: 'Chọn tiền tệ của bạn'
+    en: 'Currency',
+    vi: 'Tiền tệ'
   },
   'onboarding.currencyDesc': {
-    en: 'This controls how amounts are displayed. You can switch later.',
-    vi: 'Điều này kiểm soát cách hiển thị số tiền. Bạn có thể chuyển đổi sau.'
+    en: 'This changes display only. Stored amounts never change.',
+    vi: 'Chỉ thay đổi hiển thị. Số tiền đã lưu không đổi.'
   },
   'onboarding.currency.usd': {
     en: 'US Dollar (USD)',
@@ -784,37 +740,41 @@ export const translations = {
     vi: 'Việt Nam Đồng (VND)'
   },
   'onboarding.vndMode.title': {
-    en: 'How Do You Enter Amounts?',
-    vi: 'Bạn nhập số tiền như thế nào?'
+    en: 'How do you write amounts?',
+    vi: 'Bạn viết số tiền thế nào?'
   },
   'onboarding.vndMode.intro': {
-    en: 'Choose how the numbers you type should be shown. You can always type the real value — this only changes display.',
-    vi: 'Chọn cách hiển thị số bạn nhập. Bạn luôn có thể nhập giá trị thật — điều này chỉ thay đổi hiển thị.'
+    en: 'Type the real value either way. This setting only changes how it is shown.',
+    vi: 'Cách nào cũng nhập giá trị thật. Cài đặt này chỉ đổi cách hiển thị.'
   },
   'onboarding.vndMode.exactTitle': {
-    en: 'Exact VND',
-    vi: 'VND chính xác'
+    en: 'Full VND',
+    vi: 'VND đầy đủ'
   },
   'onboarding.vndMode.exactDesc': {
-    en: 'I type amounts in full, e.g. 1250000',
-    vi: 'Tôi nhập số tiền đầy đủ, ví dụ: 1250000'
+    en: 'Write amounts in full, e.g. 1250000',
+    vi: 'Viết đầy đủ, ví dụ 1250000'
   },
   'onboarding.vndMode.scaledTitle': {
-    en: 'Thousand-VND (k)',
-    vi: 'Nghìn Đồng (k)'
+    en: 'Thousand VND',
+    vi: 'Nghìn đồng'
   },
   'onboarding.vndMode.scaledDesc': {
-    en: 'I type amounts in thousands, e.g. 1250 means 1,250,000',
-    vi: 'Tôi nhập theo nghìn, ví dụ: 1250 nghĩa là 1,250,000'
+    en: 'Write in thousands, e.g. 1250 means 1,250,000',
+    vi: 'Viết theo nghìn, ví dụ 1250 là 1.250.000'
   },
   'onboarding.vndMode.liveExample': {
-    en: 'A transaction of 1250000 shows as',
-    vi: 'Một giao dịch 1250000 sẽ hiển thị là'
+    en: 'A saved 1250000 displays as',
+    vi: 'Số đã lưu 1250000 hiển thị là'
   },
 
   'settings.title': {
     en: 'Settings',
     vi: 'Cài đặt'
+  },
+  'settings.eyebrow': {
+    en: 'Vault controls',
+    vi: 'Điều khiển hầm'
   },
   'settings.close': {
     en: 'Close settings',
@@ -828,21 +788,13 @@ export const translations = {
     en: 'Data',
     vi: 'Dữ liệu'
   },
-  'settings.appearance': {
-    en: 'Appearance',
-    vi: 'Giao diện'
-  },
-  'settings.currency': {
-    en: 'Currency',
-    vi: 'Đơn vị tiền'
-  },
   'settings.currencySection': {
-    en: 'Currency & Display',
-    vi: 'Tiền tệ & Hiển thị'
+    en: 'Currency and display',
+    vi: 'Tiền tệ và hiển thị'
   },
   'settings.currencyHelp': {
-    en: 'Controls how amounts are shown everywhere. Stored values never change.',
-    vi: 'Kiểm soát cách hiển thị số tiền ở mọi nơi. Giá trị đã lưu không bao giờ thay đổi.'
+    en: 'Changes display only. Stored values never change.',
+    vi: 'Chỉ đổi cách hiển thị. Giá trị đã lưu không đổi.'
   },
   'settings.displayFormat': {
     en: 'Display format',
@@ -853,28 +805,24 @@ export const translations = {
     vi: 'VND đầy đủ'
   },
   'settings.vndFullDesc': {
-    en: 'Amounts are entered and shown in full, e.g. 1,250,000 ₫',
-    vi: 'Nhập và hiển thị đầy đủ, ví dụ 1.250.000 ₫'
+    en: 'Full amounts, e.g. 1,250,000 ₫',
+    vi: 'Số đầy đủ, ví dụ 1.250.000 ₫'
   },
   'settings.vndThousands': {
     en: 'Thousand VND',
     vi: 'Nghìn đồng'
   },
   'settings.vndThousandsDesc': {
-    en: 'Amounts are entered in thousands, e.g. 1,250 = 1,250,000 ₫',
-    vi: 'Nhập theo nghìn, ví dụ 1.250 = 1.250.000 ₫'
+    en: 'Thousands, e.g. 1,250 = 1,250,000 ₫',
+    vi: 'Theo nghìn, ví dụ 1.250 = 1.250.000 ₫'
   },
   'settings.liveExampleLabel': {
     en: 'Example',
     vi: 'Ví dụ'
   },
-  'settings.liveExampleStored': {
-    en: 'A saved amount of {stored} displays as',
-    vi: 'Số tiền đã lưu {stored} hiển thị là'
-  },
   'settings.usdDesc': {
-    en: 'Amounts are entered and shown in dollars with cents.',
-    vi: 'Nhập và hiển thị theo đô la, có phần xu.'
+    en: 'Dollars with cents.',
+    vi: 'Đô la, có phần xu.'
   },
 
   'month.january': { en: 'January', vi: 'Tháng 1' },
@@ -924,12 +872,12 @@ export const translations = {
   },
 
   'confirm.restore': {
-    en: 'Restore Backup',
+    en: 'Restore backup',
     vi: 'Khôi phục bản sao lưu'
   },
   'confirm.restoreMessage': {
-    en: 'Restoring will replace all current data with the backup. This cannot be undone.',
-    vi: 'Khôi phục sẽ thay thế toàn bộ dữ liệu hiện tại. Thao tác này không thể hoàn tác.'
+    en: 'Every current entry is replaced by the backup. This cannot be undone.',
+    vi: 'Toàn bộ ghi chép hiện tại sẽ được thay bằng bản sao lưu. Không thể hoàn tác.'
   },
   'confirm.continue': {
     en: 'Continue',
@@ -937,30 +885,22 @@ export const translations = {
   },
 
   'empty.transactions.title': {
-    en: 'No transactions yet',
-    vi: 'Chưa có giao dịch'
+    en: 'No entries yet',
+    vi: 'Chưa có ghi chép'
   },
   'empty.transactions.desc': {
-    en: 'Add your first transaction above to start tracking your finances.',
-    vi: 'Thêm giao dịch đầu tiên ở trên để bắt đầu theo dõi tài chính.'
+    en: 'Record the first entry to open this month’s ledger.',
+    vi: 'Ghi chép đầu tiên để mở sổ tháng này.'
   },
   'empty.forecast.title': {
     en: 'Not enough data',
     vi: 'Chưa đủ dữ liệu'
   },
   'empty.forecast.desc': {
-    en: 'Add some transactions to see your spending forecast.',
-    vi: 'Thêm một vài giao dịch để xem dự báo chi tiêu.'
+    en: 'A few more entries will make the forecast useful.',
+    vi: 'Thêm vài ghi chép để dự báo có ích hơn.'
   },
 
-  'hint.addTransaction': {
-    en: 'Start here: add your first transaction',
-    vi: 'Bắt đầu tại đây: thêm giao dịch đầu tiên'
-  },
-  'hint.settings': {
-    en: 'Manage password and backups here',
-    vi: 'Quản lý mật khẩu và sao lưu tại đây'
-  },
 
   'form.amountHint.scaled': {
     en: '(unit: thousand VND)',
@@ -975,36 +915,23 @@ export const translations = {
     vi: '0'
   },
 
-  'forecast.fixedBills': {
-    en: 'Expected Bills',
-    vi: 'Hóa đơn dự kiến'
-  },
-  'forecast.fixedBillsPending': {
-    en: 'Pending',
-    vi: 'Chưa thanh toán'
-  },
 
   'monthPicker.futureMessage': {
-    en: 'Are you from the future?',
-    vi: 'Bạn đến từ tương lai à?'
+    en: 'That month has not started yet.',
+    vi: 'Tháng đó chưa bắt đầu.'
   },
   'monthPicker.noData': {
-    en: 'No transactions recorded this month',
-    vi: 'Tháng này chưa có giao dịch nào'
+    en: 'No entries in this month.',
+    vi: 'Tháng này chưa có ghi chép.'
+  },
+  'monthPicker.selectMonth': {
+    en: 'Choose a month',
+    vi: 'Chọn tháng'
   },
 
   'forecast.clickToCorrect': {
-    en: 'Click to correct prediction',
-    vi: 'Nhấn để chỉnh sửa dự đoán'
-  },
-
-  'errors.sessionExpired': {
-    en: 'Session expired. Unlock the vault to continue.',
-    vi: 'Phiên đăng nhập đã hết hạn. Mở khóa hầm để tiếp tục.'
-  },
-  'errors.chartLoadFailed': {
-    en: 'Could not load chart data.',
-    vi: 'Không thể tải dữ liệu biểu đồ.'
+    en: 'Correct the estimate',
+    vi: 'Chỉnh lại ước tính'
   }
 };
 
