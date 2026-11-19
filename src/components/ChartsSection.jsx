@@ -67,7 +67,7 @@ function getThemeColors() {
 }
 
 const chartBaseTextStyle = {
-  fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+  fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif",
 };
 
 /**
@@ -186,49 +186,24 @@ export function SpendingDoughnut({ categories, formatCurrency, t }) {
           return `<strong>${params.name}</strong><br/>${formatCurrency(params.value)}<br/>${pct}%`;
         },
       },
-      legend: {
-        show: true,
-        bottom: 0,
-        left: 'center',
-        textStyle: {
-          ...chartBaseTextStyle,
-          color: colors.textSecondary,
-          fontSize: 11,
-        },
-        itemWidth: 8,
-        itemHeight: 8,
-        itemGap: 12,
-        type: 'scroll',
-      },
+      // The list beside the doughnut already names every category with its
+      // colour; a second legend only repeats it and steals label space.
       series: [
         {
           name: t('dashboard.expenses'),
           type: 'pie',
-          radius: ['52%', '78%'],
-          center: ['50%', '46%'],
-          avoidLabelOverlap: false,
+          radius: ['54%', '78%'],
+          center: ['50%', '50%'],
           itemStyle: {
             borderColor: colors.bodyBg,
-            borderWidth: 2,
-            borderRadius: 4,
+            borderWidth: 1,
+            borderRadius: 0,
           },
-          label: {
-            show: true,
-            position: 'outside',
-            formatter: '{b}',
-            color: colors.textSecondary,
-            fontSize: 10,
-            distanceToLabelLine: 4,
-          },
-          labelLine: {
-            length: 16,
-            length2: 12,
-            lineStyle: { color: colors.cardBorder },
-          },
-          emphasis: {
-            scaleSize: 6,
-            label: { fontSize: 13, fontWeight: 600 },
-          },
+          // Names live in the list beside the pie; outside labels clip on
+          // narrow screens and repeat what that list already says.
+          label: { show: false },
+          labelLine: { show: false },
+          emphasis: { scaleSize: 4 },
           data,
         },
       ],
@@ -301,39 +276,43 @@ function buildCenterGraphic(name, valueText, pctText, colors) {
     {
       type: 'text',
       left: 'center',
-      top: '40%',
+      top: '43%',
       style: {
         text: name,
         textAlign: 'center',
         fill: colors.textPrimary,
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: 600,
-        fontFamily: "'DM Sans', sans-serif",
+        width: 124,
+        overflow: 'truncate',
+        fontFamily: "'IBM Plex Sans', sans-serif",
       },
     },
     {
       type: 'text',
       left: 'center',
-      top: '47%',
+      top: '50%',
       style: {
         text: valueText,
         textAlign: 'center',
         fill: colors.textPrimary,
-        fontSize: 16,
-        fontWeight: 700,
+        fontSize: 11,
+        fontWeight: 500,
+        width: 128,
+        overflow: 'truncate',
         fontFamily: "'JetBrains Mono', monospace",
       },
     },
     {
       type: 'text',
       left: 'center',
-      top: '54%',
+      top: '57%',
       style: {
         text: pctText,
         textAlign: 'center',
         fill: colors.textSecondary,
-        fontSize: 12,
-        fontFamily: "'DM Sans', sans-serif",
+        fontSize: 11,
+        fontFamily: "'IBM Plex Sans', sans-serif",
       },
     },
   ];
@@ -400,7 +379,7 @@ export function TopCategoriesBar({ categories, totalExpenses, formatCurrency, t 
           color: colors.textPrimary,
           fontSize: 12,
           fontWeight: 500,
-          fontFamily: "'DM Sans', sans-serif",
+          fontFamily: "'IBM Plex Sans', sans-serif",
         },
       },
       series: [
@@ -411,10 +390,10 @@ export function TopCategoriesBar({ categories, totalExpenses, formatCurrency, t 
             value: v,
             itemStyle: {
               color: getCategoryColor(reversed[i].name),
-              borderRadius: [0, 6, 6, 0],
+              borderRadius: [0, 2, 2, 0],
             },
           })),
-          barWidth: 18,
+          barWidth: 14,
           label: {
             show: true,
             position: 'right',
@@ -429,7 +408,7 @@ export function TopCategoriesBar({ categories, totalExpenses, formatCurrency, t 
             distance: 6,
           },
           emphasis: {
-            barWidth: 22,
+            barWidth: 18,
             label: { fontSize: 13 },
           },
         },
@@ -517,7 +496,7 @@ export function MonthlyTrendLine({ months, income, expense, net, formatCurrency,
         axisLabel: {
           color: colors.textSecondary,
           fontSize: 11,
-          fontFamily: "'DM Sans', sans-serif",
+          fontFamily: "'IBM Plex Sans', sans-serif",
           rotate: months.length > 6 ? 30 : 0,
         },
         boundaryGap: false,
@@ -543,56 +522,44 @@ export function MonthlyTrendLine({ months, income, expense, net, formatCurrency,
           name: incomeName,
           type: 'line',
           data: income,
-          smooth: true,
+          smooth: false,
           symbol: 'circle',
-          symbolSize: 5,
+          symbolSize: 4,
           showSymbol: months.length <= 12,
-          lineStyle: { color: colors.income, width: 2.5 },
-          itemStyle: { color: colors.income, borderWidth: 2, borderColor: colors.cardBg },
-          areaStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0,   color: colors.income + '33' },  // ~20% opacity
-              { offset: 0.7, color: colors.income + '08' },
-              { offset: 1,   color: colors.income + '00' },
-            ]),
-          },
+          lineStyle: { color: colors.income, width: 1.5 },
+          itemStyle: { color: colors.income, borderWidth: 1, borderColor: colors.cardBg },
+          areaStyle: { color: colors.income + '14' },
           emphasis: {
             focus: 'series',
-            symbolSize: 8,
+            symbolSize: 5,
           },
         },
         {
           name: expenseName,
           type: 'line',
           data: expense,
-          smooth: true,
+          smooth: false,
           symbol: 'circle',
-          symbolSize: 5,
+          symbolSize: 4,
           showSymbol: months.length <= 12,
-          lineStyle: { color: colors.expense, width: 2.5 },
-          itemStyle: { color: colors.expense, borderWidth: 2, borderColor: colors.cardBg },
-          areaStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0,   color: colors.expense + '33' },
-              { offset: 0.7, color: colors.expense + '08' },
-              { offset: 1,   color: colors.expense + '00' },
-            ]),
-          },
+          lineStyle: { color: colors.expense, width: 1.5 },
+          itemStyle: { color: colors.expense, borderWidth: 1, borderColor: colors.cardBg },
+          areaStyle: { color: colors.expense + '14' },
           emphasis: {
             focus: 'series',
-            symbolSize: 8,
+            symbolSize: 5,
           },
         },
         {
           name: netName,
           type: 'line',
           data: net,
-          smooth: true,
+          smooth: false,
           symbol: 'circle',
-          symbolSize: 6,
+          symbolSize: 5,
           showSymbol: months.length <= 12,
-          lineStyle: { color: colors.primaryLight, width: 2, type: 'dashed', dashOffset: 2 },
-          itemStyle: { color: colors.primaryLight, borderWidth: 2, borderColor: colors.cardBg },
+          lineStyle: { color: colors.primaryLight, width: 1.5, type: 'dashed' },
+          itemStyle: { color: colors.primaryLight, borderWidth: 1, borderColor: colors.cardBg },
           emphasis: {
             focus: 'series',
             symbolSize: 9,
