@@ -626,10 +626,6 @@ export const translations = {
     en: 'Opened',
     vi: 'Ngày mở'
   },
-  'accounts.switch': {
-    en: 'Switch',
-    vi: 'Đổi'
-  },
   'accounts.errors.nameRequired': {
     en: 'Enter an account name.',
     vi: 'Nhập tên tài khoản.'

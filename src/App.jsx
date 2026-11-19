@@ -126,7 +126,7 @@ function App() {
 
   return (
     <div className="app">
-      <Dashboard onLogout={handleLogout} onSwitchAccount={handleSwitchAccount} />
+      <Dashboard onLogout={handleLogout} />
       <footer className="footer">
         <span>&copy; {t('app.copyright')}</span>
       </footer>

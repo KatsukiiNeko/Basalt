@@ -7,7 +7,6 @@
 .theme-toggle,
 .language-toggle,
 .settings-gear-btn,
-.switch-account-button,
 .logout-button {
   display: inline-flex;
   align-items: center;
@@ -27,7 +26,6 @@
 .theme-toggle:hover,
 .language-toggle:hover,
 .settings-gear-btn:hover,
-.switch-account-button:hover,
 .logout-button:hover {
   color: var(--text-primary);
   border-color: var(--border-strong);
